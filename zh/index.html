@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>记忆花园 VR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --green:#6b9a5b; --ink:#2b2b2b; --sub:#666; --cream:#fbf7ee; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #bfe3f7; font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); }
+  #app canvas { display: block; }
+  #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: linear-gradient(180deg, rgba(191,227,247,.92), rgba(251,247,238,.96)); z-index: 10; }
+  #overlay.hidden, .hidden { display: none !important; }
+  .card { width: min(720px, 100%); background: rgba(255,255,255,.9); border-radius: 32px; padding: 40px 44px; box-shadow: 0 20px 60px rgba(60,80,40,.18); }
+  h1 { margin: 0 0 6px; font-size: 44px; } h1 small { font-size: 22px; color: var(--sub); font-weight: 500; margin-left: 8px; }
+  p { font-size: 19px; line-height: 1.6; margin: 8px 0; color: #444; }
+  .bar { height: 14px; border-radius: 7px; background: #e8efe4; overflow: hidden; margin: 22px 0 10px; }
+  .bar > div { height: 100%; width: 0; background: var(--green); transition: width .2s; }
+  button.big { display: block; width: 100%; font: 700 24px "Noto Sans SC", sans-serif; padding: 20px; border-radius: 999px; border: 0; cursor: pointer; margin-top: 14px; }
+  .primary { background: var(--green); color: #fff; } .primary:disabled { background: #c9d3c4; cursor: default; }
+  .secondary { background: #fff; color: var(--ink); border: 2px solid #e3e3dc !important; }
+  .note { font-size: 16px; color: var(--sub); margin-top: 8px; }
+  ul { padding-left: 22px; margin: 14px 0 0; } li { font-size: 17px; line-height: 1.7; color: #444; }
+  #hud { position: fixed; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 10px; justify-content: center; z-index: 5; pointer-events: none; }
+  #hud button { pointer-events: auto; font: 700 18px "Noto Sans SC", sans-serif; padding: 12px 22px; border-radius: 999px; color: var(--ink);
+    border: 1.5px solid rgba(255,255,255,.75); background: rgba(255,255,255,.28); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow: 0 6px 20px rgba(40,60,30,.12); cursor: pointer; transition: background .15s; }
+  #hud button:hover { background: rgba(255,255,255,.5); }
+  #mic.on { background: var(--green); color: #fff; }
+  #toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.35); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1.5px solid rgba(255,255,255,.75); padding: 12px 26px; border-radius: 999px; font-size: 20px; font-weight: 600; opacity: 0; transition: opacity .3s; z-index: 6; pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/build/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<div id="hud">
+  <button id="menuBtn">菜单 (M)</button>
+  <button id="mic">按住说话 (V)</button>
+  <button id="vrBtn2">开始 VR</button>
+</div>
+<div id="overlay">
+  <div class="card">
+    <h1>记忆花园 <small>Memory Garden VR</small></h1>
+    <p>在这里照料花园、做记忆训练，还可以和朋友们开茶话会。</p>
+    <div id="loading">
+      <div class="bar"><div id="bar"></div></div>
+      <p id="loadtxt" class="note">正在加载花园…</p>
+    </div>
+    <div id="start" class="hidden">
+      <p id="vrnote" class="note"></p>
+      <button id="btnVR" class="big primary">开始 VR</button>
+      <button id="btnMic" class="big secondary">允许使用麦克风（语音指令）</button>
+      <p id="micnote" class="note">想用语音选菜单，或在茶话会里说话，请允许使用麦克风。</p>
+      <button id="btnDesk" class="big secondary">在屏幕上浏览（不用头显）</button>
+      <ul>
+        <li>推左摇杆就会朝那个方向走。</li>
+        <li>左右推右摇杆可以转身。</li>
+        <li>按 X 或 A 键打开、关闭菜单，B 或 Y 键是关闭。</li>
+        <li>按住握持键说话，就能用语音选择。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script>
+if (location.protocol === 'file:') {
+  document.getElementById('loadtxt').innerHTML = '直接打开文件无法加载花园。<br>请用 GitHub Pages（https）地址或本地服务器（http://localhost）打开。<br>方法写在 README.txt 里。';
+}
+</script>
+<script type="module" src="zh/js/main.js?v=18"></script>
+</body>
+</html>

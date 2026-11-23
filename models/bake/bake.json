@@ -1,0 +1,28 @@
+{
+ "sets": [
+  {
+   "material": "MG_BK_0",
+   "alb": "alb_0.jpg",
+   "lm": "lm_0.jpg",
+   "scale": 1.187558650970459
+  },
+  {
+   "material": "MG_BK_1",
+   "alb": "alb_1.jpg",
+   "lm": "lm_1.jpg",
+   "scale": 1.4449174404144287
+  },
+  {
+   "material": "MG_BK_2",
+   "alb": "alb_2.jpg",
+   "lm": "lm_2.jpg",
+   "scale": 1.308265209197998
+  },
+  {
+   "material": "MG_BK_3",
+   "alb": "alb_3.jpg",
+   "lm": "lm_3.jpg",
+   "scale": 1.1893975734710693
+  }
+ ]
+}
