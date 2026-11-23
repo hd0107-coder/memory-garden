@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=19';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=19';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=20';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=20';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);

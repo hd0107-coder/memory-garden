@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=19';
-import { loadState, saveState } from './data.js?v=19';
-import { startGame } from './game.js?v=19';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=20';
+import { loadState, saveState } from './data.js?v=20';
+import { startGame } from './game.js?v=20';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -102,7 +102,7 @@ function nearestWalkable(bx, by) {
     }
   return [40.1, -10.5];
 }
-let stuckT = 0;
+let stuckT = 0, dbgStuck = 0;
 function tryMove(dx, dz) {
   const h = E.headWorld();
   const nx = h.x + dx, nz = h.z + dz;
@@ -574,12 +574,20 @@ renderer.setAnimationLoop(() => {
       if (b5 && !E[key + '5']) E.onBackButton && E.onBackButton();
       E[key + '4'] = b4; E[key + '5'] = b5;
       if (st === 'L') {
-        const sp = [0.7, 1.2, 1.8][E.state.settings.speed] * dt;
-        if (Math.hypot(ax[0], ax[1]) > 0.2) {
-          const yaw = E.headYaw();
-          const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
-          tryMove((fx * -ax[1] + rx * ax[0]) * sp, (fz * -ax[1] + rz * ax[0]) * sp);
-        }
+        try {
+          const sp = ([0.7, 1.2, 1.8][E.state.settings.speed] || 1.2) * dt;
+          if (Math.hypot(ax[0], ax[1]) > 0.2) {
+            const yaw = E.headYaw();
+            const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+            const px = rig.position.x, pz = rig.position.z;
+            tryMove((fx * -ax[1] + rx * ax[0]) * sp, (fz * -ax[1] + rz * ax[0]) * sp);
+            if (px === rig.position.x && pz === rig.position.z) dbgStuck += dt; else dbgStuck = 0;
+            if (dbgStuck > 1.5) {
+              dbgStuck = 0; const h = E.headB();
+              E.toast(`DEBUG stick ${ax[0].toFixed(2)} ${ax[1].toFixed(2)} | pos ${h.x.toFixed(1)} ${h.y.toFixed(1)} | floor ${E.walkable(h.x, h.y) ? 'Y' : 'N'} | sp ${sp.toFixed(3)}`, false, 8000);
+            }
+          }
+        } catch (err) { E.toast('DEBUG error: ' + err.message, false, 8000); }
       }
       if (st === 'R') {
         const ptr = pointers.find(p => p.src === src);
@@ -630,6 +638,7 @@ async function enterVR() {
     camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
     $('overlay').classList.add('hidden');
     setTimeout(() => { E.setPose(keep.x, keep.y, yaw); E.onEnterVR && E.onEnterVR(); }, 400);
+    setTimeout(() => { const ss = renderer.xr.getSession(); if (!ss) return; const list = [...ss.inputSources].map(x => `${x.handedness}/${x.gamepad ? x.gamepad.axes.length : 'nogp'}`).join(', '); E.toast('DEBUG inputs: ' + (list || 'none'), false, 6000); }, 3000);
     // 헤드셋 위치가 바닥 밖이면 가까운 바닥으로 옮기기
     setTimeout(() => { const h = E.headB(); if (!E.walkable(h.x, h.y)) { const [x, y] = nearestWalkable(keep.x, keep.y); E.setPose(x, y); } }, 1500);
     session.addEventListener('end', () => {
