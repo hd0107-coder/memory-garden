@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=22';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=22';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=23';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=23';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -296,6 +296,7 @@ export function startGame(E) {
       it.gone = performance.now(); E.removeTarget(it.hb);
       mr.picked[t] = (mr.picked[t] || 0) + 1;
       S.flowers[t] = (S.flowers[t] || 0) + 1; E.save();
+      E.toast(`${FLOWERS[t].name} +1 · 已放进鲜花仓库`, false, 1500);
       mrHud();
       if (Object.keys(mr.target).every(k => (mr.picked[k] || 0) >= mr.target[k])) { mr.phase = 'done'; setTimeout(mrDone, 900); }
     } else {
@@ -365,7 +366,7 @@ export function startGame(E) {
       drawGlyph(P.ctx, 'coin', px + 32 + 22, 450, 44);
       P.text(label, px + 32 + 44 + 24, 452, { size: ts, weight: 700, color: C.greenDark, align: 'left' });
       P.text(`摘错 ${wrong} 次 · 再看 ${hints} 次`, W / 2, 540, { size: 32, color: C.sub });
-      P.text(unlocked ? `第${lv + 1}级已经解锁。摘的花已经放进保管箱了。` : '摘的花已经放进保管箱了。摘错了也没关系。', W / 2, 595, { size: 32, color: C.sub, maxW: 900 });
+      P.text(unlocked ? `第${lv + 1}级已经解锁。摘的花已经放进鲜花仓库了。` : '摘的花已经放进鲜花仓库了，可以拿到花市场去卖。', W / 2, 595, { size: 32, color: C.sub, maxW: 900 });
       if (fb) P.button('basket', 560, 650, 800, 105, '去做花篮', () => { const id = bk.style; mrReturn = () => basketCheck(id); E.exitMR(true); }, { kind: 'primary', voice: ['花篮', '去做'] });
       else P.button('again', 560, 650, 800, 105, '再玩一次', () => mrAgain(), { kind: 'primary', voice: ['再玩一次', '再'] });
       P.button('home', 560, 775, 800, 105, '回到花园', () => { mrReturn = null; E.exitMR(true); }, { voice: ['回花园', '返回'] });

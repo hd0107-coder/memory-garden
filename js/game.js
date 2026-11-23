@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=22';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=22';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=23';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=23';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -296,6 +296,7 @@ export function startGame(E) {
       it.gone = performance.now(); E.removeTarget(it.hb);
       mr.picked[t] = (mr.picked[t] || 0) + 1;
       S.flowers[t] = (S.flowers[t] || 0) + 1; E.save();
+      E.toast(`${FLOWERS[t].name} +1 · 꽃 창고에 넣었어요`, false, 1500);
       mrHud();
       if (Object.keys(mr.target).every(k => (mr.picked[k] || 0) >= mr.target[k])) { mr.phase = 'done'; setTimeout(mrDone, 900); }
     } else {
@@ -365,7 +366,7 @@ export function startGame(E) {
       drawGlyph(P.ctx, 'coin', px + 32 + 22, 450, 44);
       P.text(label, px + 32 + 44 + 24, 452, { size: ts, weight: 700, color: C.greenDark, align: 'left' });
       P.text(`잘못 고른 꽃 ${wrong}번 · 다시 보기 ${hints}번`, W / 2, 540, { size: 32, color: C.sub });
-      P.text(unlocked ? `${lv + 1}단계가 열렸어요. 딴 꽃은 보관함에 넣었어요.` : '딴 꽃은 보관함에 넣었어요. 틀려도 괜찮아요.', W / 2, 595, { size: 32, color: C.sub, maxW: 900 });
+      P.text(unlocked ? `${lv + 1}단계가 열렸어요. 딴 꽃은 꽃 창고에 넣었어요.` : '딴 꽃은 꽃 창고에 넣었어요. 꽃 시장에서 팔 수 있어요.', W / 2, 595, { size: 32, color: C.sub, maxW: 900 });
       if (fb) P.button('basket', 560, 650, 800, 105, '꽃바구니 만들러 가기', () => { const id = bk.style; mrReturn = () => basketCheck(id); E.exitMR(true); }, { kind: 'primary', voice: ['꽃바구니', '만들러'] });
       else P.button('again', 560, 650, 800, 105, '한 번 더 하기', () => mrAgain(), { kind: 'primary', voice: ['한 번 더', '다시'] });
       P.button('home', 560, 775, 800, 105, '정원으로 돌아가기', () => { mrReturn = null; E.exitMR(true); }, { voice: ['정원으로', '돌아가기'] });

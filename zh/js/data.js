@@ -59,7 +59,7 @@ export function todayStr(d = new Date()) {
 
 export function newState() {
   return {
-    coins: 120,
+    coins: 1000, coinGrant1000: true,
     inv: { seed_tulip: 2, seed_daisy: 1, seed_sunflower: 1, fertilizer: 3, pesticide: 2, soil: 2, pot: 1, labels: 5, watering_can: 1, pruners: 1 },
     flowers: { tulip: 0, daisy: 0, sunflower: 0 },
     slots: [
@@ -98,6 +98,7 @@ export function loadState() {
       if (!r.settings || r.settings.v !== 2) { r.settings = Object.assign({}, n.settings, r.settings || {}, { tts: false, bgm: true, v: 2 }); }
       if (!r.letters) r.letters = newState().letters;
       if (!r.baskets) r.baskets = [];
+      if (!r.coinGrant1000) { r.coins = Math.max(r.coins || 0, 1000); r.coinGrant1000 = true; }
       if (!Array.isArray(r.slots)) r.slots = n.slots;
       while (r.slots.length < 10) r.slots.push(null);
       if (r.slots.length > 20) r.slots.length = 20;
