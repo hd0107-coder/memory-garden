@@ -54,6 +54,11 @@
       <div class="bar"><div id="bar"></div></div>
       <p id="loadtxt" class="note">正在加载花园…</p>
     </div>
+    <div id="mrStart" class="hidden">
+      <p class="note">点下面的按钮，就会开始能看到自己房间的花田（MR）。</p>
+      <button id="btnMR" class="big primary">开始 MR 摘花</button>
+      <button id="btnMRBack" class="big secondary">回到花园（VR）</button>
+    </div>
     <div id="start" class="hidden">
       <p id="vrnote" class="note"></p>
       <button id="btnVR" class="big primary">开始 VR</button>
@@ -74,6 +79,6 @@ if (location.protocol === 'file:') {
   document.getElementById('loadtxt').innerHTML = '直接打开文件无法加载花园。<br>请用 GitHub Pages（https）地址或本地服务器（http://localhost）打开。<br>方法写在 README.txt 里。';
 }
 </script>
-<script type="module" src="zh/js/main.js?v=21"></script>
+<script type="module" src="zh/js/main.js?v=22"></script>
 </body>
 </html>

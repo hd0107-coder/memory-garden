@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=21';
-import { loadState, saveState } from './data.js?v=21';
-import { startGame } from './game.js?v=21';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=22';
+import { loadState, saveState } from './data.js?v=22';
+import { startGame } from './game.js?v=22';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -521,6 +521,7 @@ const orthoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 let blurFrame = 0;
 const hidden = [];
 function blurPass() {
+  if (mrSession) return;
   let any = false;
   for (const p of E.panels) if (p.visible && p.mesh.parent === scene && p.W >= 1000) { any = true; break; }
   if (!any) return;
@@ -566,7 +567,7 @@ renderer.setAnimationLoop(() => {
     const session = renderer.xr.getSession();
     let hasLeft = false;
     for (const src of session.inputSources) if (src.handedness === 'left' && src.gamepad) hasLeft = true;
-    if (!hasLeft && !E._oneHandTold && E.inXR()) { E._oneHandTold = true; setTimeout(() => { const ss = renderer.xr.getSession(); if (ss && ![...ss.inputSources].some(x => x.handedness === 'left' && x.gamepad)) E.toast('왼손 컨트롤러가 안 보여요. 오른손 스틱을 앞뒤로 밀면 걸어요.', true, 6000); else E._oneHandTold = false; }, 4500); }
+    if (!hasLeft && !E._oneHandTold && E.inXR() && !E.inMR()) { E._oneHandTold = true; setTimeout(() => { const ss = renderer.xr.getSession(); if (ss && ![...ss.inputSources].some(x => x.handedness === 'left' && x.gamepad)) E.toast('왼손 컨트롤러가 안 보여요. 오른손 스틱을 앞뒤로 밀면 걸어요.', true, 6000); else E._oneHandTold = false; }, 4500); }
     for (const src of session.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
       const ax = gp.axes.length >= 4 ? [gp.axes[2], gp.axes[3]] : [gp.axes[0] || 0, gp.axes[1] || 0];
@@ -576,7 +577,7 @@ renderer.setAnimationLoop(() => {
       if (b4 && !E[key + '4']) E.onMenuButton && E.onMenuButton();
       if (b5 && !E[key + '5']) E.onBackButton && E.onBackButton();
       E[key + '4'] = b4; E[key + '5'] = b5;
-      if (st === 'L') {
+      if (st === 'L' && !mrSession) {
         try {
           const sp = ([0.7, 1.2, 1.8][E.state.settings.speed] || 1.2) * dt;
           if (Math.hypot(ax[0], ax[1]) > 0.2) {
@@ -587,12 +588,12 @@ renderer.setAnimationLoop(() => {
         } catch (err) { console.warn(err); }
       }
       // 왼손 컨트롤러가 없으면 오른손 스틱 앞뒤로 걷기
-      if (st === 'R' && !hasLeft && Math.abs(ax[1]) > 0.3 && Math.abs(ax[1]) > Math.abs(ax[0])) {
+      if (st === 'R' && !hasLeft && !mrSession && Math.abs(ax[1]) > 0.3 && Math.abs(ax[1]) > Math.abs(ax[0])) {
         const sp = ([0.7, 1.2, 1.8][E.state.settings.speed] || 1.2) * dt;
         const yaw = E.headYaw();
         tryMove(-Math.sin(yaw) * -ax[1] * sp, -Math.cos(yaw) * -ax[1] * sp);
       }
-      if (st === 'R') {
+      if (st === 'R' && !mrSession) {
         const ptr = pointers.find(p => p.src === src);
         const armed = ptr ? ptr.turnArmed : true;
         if (Math.abs(ax[0]) > 0.7 && armed) { rotateRig(-Math.sign(ax[0]) * Math.PI / 6); if (ptr) ptr.turnArmed = false; }
@@ -631,8 +632,8 @@ renderer.setAnimationLoop(() => {
 
 // ---------- VR 시작 ----------
 let xrStarting = false;
-async function enterVR() {
-  if (!navigator.xr || xrStarting || renderer.xr.isPresenting) return;
+async function enterVR(quiet) {
+  if (!navigator.xr || xrStarting || renderer.xr.isPresenting) return false;
   xrStarting = true;
   try {
     const session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor'] });
@@ -645,13 +646,76 @@ async function enterVR() {
     setTimeout(() => { const h = E.headB(); if (!E.walkable(h.x, h.y)) { const [x, y] = nearestWalkable(keep.x, keep.y); E.setPose(x, y); } }, 1500);
     session.addEventListener('end', () => {
       camera.position.set(0, 1.55, 0); pitch = 0; camera.rotation.set(0, 0, 0);
-      $('overlay').classList.remove('hidden');
+      if (!E._toMR) $('overlay').classList.remove('hidden');
     });
+    return true;
   } catch (e) {
+    if (quiet) return false;
     if (/already an active/i.test(e.message)) alert('VR이 이미 다른 곳에서 켜져 있어요. 정원 탭을 하나만 남기고 나머지는 닫아 주세요. 헤드셋에서 다른 VR 앱도 꺼 주세요. 그다음 다시 눌러 주세요.');
     else alert('VR을 시작하지 못했어요. 헤드셋이 컴퓨터에 연결되어 있는지 확인해 주세요.\n(' + e.message + ')');
+    return false;
   } finally { xrStarting = false; }
 }
+
+// ---------- MR: 내 방이 보이는 꽃밭 ----------
+const mrRoot = new THREE.Group(); scene.add(mrRoot); E.mrRoot = mrRoot;
+let mrSession = null, mrStarting = false, mrBg = null;
+const mrHidden = [];
+E.inMR = () => !!mrSession;
+E.mrSupported = async () => !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-ar').catch(() => false));
+function mrWorld(show) {
+  if (!show) {
+    const keep = new Set([rig, mrRoot, carrySprite.sprite]);
+    for (const p of E.panels) keep.add(p.mesh);
+    for (const p of pointers) if (p.dot) keep.add(p.dot);
+    mrHidden.length = 0;
+    for (const o of scene.children) if (!keep.has(o) && !o.isLight && o.visible) { o.visible = false; mrHidden.push(o); }
+    mrBg = scene.background; scene.background = null; renderer.setClearColor(0x000000, 0); BLUR.on.value = 0;
+  } else {
+    for (const o of mrHidden) o.visible = true;
+    mrHidden.length = 0;
+    if (mrBg) scene.background = mrBg;
+    renderer.setClearColor(0x000000, 1);
+  }
+}
+function showMRButton(on) {
+  $('overlay').classList.remove('hidden');
+  $('start').classList.toggle('hidden', on);
+  $('mrStart').classList.toggle('hidden', !on);
+}
+E.enterMR = async () => {
+  if (mrStarting || mrSession || !navigator.xr) return false;
+  mrStarting = true;
+  try {
+    const vr = renderer.xr.getSession();
+    if (vr) { E._toMR = true; await vr.end(); await new Promise(r => setTimeout(r, 200)); }
+    const session = await navigator.xr.requestSession('immersive-ar', { optionalFeatures: ['local-floor'] });
+    mrWorld(false);
+    try { await renderer.xr.setSession(session); } catch (err) { mrWorld(true); try { await session.end(); } catch (e2) { } throw err; }
+    mrSession = session;
+    camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
+    $('overlay').classList.add('hidden'); $('mrStart').classList.add('hidden'); $('start').classList.remove('hidden');
+    session.addEventListener('end', () => {
+      mrSession = null; mrWorld(true);
+      camera.position.set(0, 1.55, 0); pitch = 0; camera.rotation.set(0, 0, 0);
+      E.onExitMR && E.onExitMR();
+      if (E._mrBackToVR) { E._mrBackToVR = false; enterVR(true).then(ok => { if (!ok) showMRButton(false); }); }
+      else showMRButton(false);
+    });
+    // 지금 서 있는 곳을 꽃밭의 가운데로
+    setTimeout(() => {
+      const h = E.headWorld();
+      mrRoot.position.set(h.x, rig.position.y, h.z); mrRoot.rotation.set(0, E.headYaw(), 0);
+      E.onEnterMR && E.onEnterMR();
+    }, 600);
+    return true;
+  } catch (e) {
+    console.warn(e);
+    showMRButton(true);
+    return false;
+  } finally { mrStarting = false; E._toMR = false; }
+};
+E.exitMR = (backToVR = true) => { if (!mrSession) return; E._mrBackToVR = backToVR; mrSession.end(); };
 
 
 // ---------- 구름: 원래 구름 6개를 본으로 삼아 사방에 높이를 달리해 띄우기 ----------
@@ -825,7 +889,9 @@ $('btnMic').addEventListener('click', async () => {
 $('mic').addEventListener('pointerdown', () => E.voiceStart());
 $('mic').addEventListener('pointerup', () => E.voiceStop());
 $('menuBtn').addEventListener('click', () => E.onMenuButton && E.onMenuButton());
-$('vrBtn2').addEventListener('click', enterVR);
+$('vrBtn2').addEventListener('click', () => enterVR());
+$('btnMR').addEventListener('click', () => E.enterMR());
+$('btnMRBack').addEventListener('click', () => { showMRButton(false); E.onMRCancel && E.onMRCancel(); enterVR(); });
 
 boot().catch(err => {
   console.error(err);

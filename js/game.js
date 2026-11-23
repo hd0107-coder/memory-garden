@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=21';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=21';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=22';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=22';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -159,7 +159,7 @@ export function startGame(E) {
       const cards = [
         ['flash', '반짝 꽃 찾기', '잠깐 나타난 꽃의\n위치 기억하기', 'anemone', () => guideTo('flash'), ['반짝', '꽃 찾기']],
         ['shop', '기억 꽃집', '살 물건을 기억해\n꽃집에서 고르기', 'watering_can', () => guideTo('shop'), ['기억 꽃집', '꽃집']],
-        ['mr', '꽃 따기', '내 방에서\n부족한 꽃 따기', 'poppy', () => mrInfo(), ['꽃 따기']],
+        ['mr', '꽃 따기', '꽃을 기억해서\n내 방에서 따기', 'poppy', () => mrInfo(), ['꽃 따기']],
         ['basket', '꽃바구니 만들기', '내 꽃으로\n꽃바구니 만들기', 'ic_basket', () => basketStart(), ['꽃바구니']]
       ];
       cards.forEach((c, i) => {
@@ -179,15 +179,203 @@ export function startGame(E) {
       P.text(S.rec === 'garden' ? '오늘의 추천: 정원 가꾸기' : `“${S.rec === 'flash' ? '반짝 꽃 찾기' : '기억 꽃집'}”라고 말해 보세요`, W / 2, 1000, { size: 30, color: '#555' });
     }, 'front', 'training');
   }
+  // ================= MR 꽃 따기 (기억 훈련) =================
+  const MR_TYPES = ['tulip', 'daisy', 'sunflower'];
+  let mr = null, mrReturn = null, mrTimer = null;
+  const mrLevel = () => Math.min(5, S.mrLevel || 1);
+  const sumv = o => Object.values(o).reduce((a, b) => a + b, 0);
+  function mrTarget(lv) {
+    const types = MR_TYPES.slice().sort(() => Math.random() - 0.5).slice(0, [0, 1, 2, 3, 3, 3][lv]);
+    const t = {}; types.forEach(x => t[x] = 1);
+    let total = [0, 2, 3, 4, 5, 6][lv];
+    while (sumv(t) < total) { const x = types[Math.floor(Math.random() * types.length)]; if (t[x] < 3) t[x]++; }
+    return t;
+  }
+  function mrFlowerNeed() {
+    if (!(bk && bk.style)) return null;
+    const st = bStyle(bk.style); if (!st) return null;
+    const t = {}; basketNeeds(st).filter(m => m.kind === 'flower').forEach(m => t[m.id] = m.need);
+    return sumv(t) ? t : null;
+  }
   function mrInfo() {
+    const forBasket = !!mrFlowerNeed();
     open(P => {
-      P.glass(410, 200, 1100, 660, 60);
-      P.circle(W / 2, 330, 90, '#f8f6ef'); P.icon('poppy', W / 2, 330, 140);
-      const outdoor = activeZone === 'mr';
-      P.text(outdoor ? '야외 정원' : '꽃 따기 (MR)', W / 2, 480, { size: 60, weight: 700 });
-      P.text(outdoor ? '문 밖 꽃밭에서 마음껏 꽃을 따는 곳이에요. 훈련을 하지 않아도 올 수 있어요. 꽃 따기 훈련(MR)도 여기서 해요. 컴퓨터에 연결한 VR에서는 아직 준비 중이에요.' : '꽃 따기는 내 방 안에 꽃을 보여 주는 혼합현실(MR) 기능이에요. 야외 정원 입구에서 시작해요. 컴퓨터에 연결한 VR에서는 아직 준비 중이에요.', W / 2, 600, { size: 34, color: C.sub, maxW: 940 });
-      P.button('ok', 610, 710, 700, 100, '확인', () => outdoor ? closeAll() : trainingArea(), { kind: 'primary' });
+      exitBtn(P);
+      P.glass(360, 110, 1200, 860, 60);
+      P.circle(W / 2, 240, 90, '#f8f6ef'); P.icon('poppy', W / 2, 240, 140);
+      P.text('꽃 따기 (MR)', W / 2, 390, { size: 60, weight: 700 });
+      P.text(forBasket ? '꽃바구니에 부족한 꽃을 기억하고 있나요? 꽃밭에서는 목록을 보여 주지 않아요. 기억한 꽃만 골라서 따 보세요.' : '내 방 바닥에 꽃이 피어나요. 먼저 딸 꽃을 잘 기억한 다음, 그 꽃만 골라서 따 보세요.', W / 2, 490, { size: 34, color: C.sub, maxW: 1000 });
+      P.text('컨트롤러로 꽃을 가리키고 방아쇠를 누르면 따져요. 시작하기 전에 주변에 부딪힐 물건이 없는지 확인해 주세요.', W / 2, 610, { size: 30, color: C.sub, maxW: 1000 });
+      if (!forBasket) P.text(`지금 ${mrLevel()}단계`, W / 2, 700, { size: 34, weight: 700, color: C.green });
+      P.button('go', 560, 760, 800, 110, 'MR 시작하기', () => mrBegin(forBasket), { kind: 'primary', size: 42, voice: ['시작', 'MR'] });
     }, activeZone === 'mr' ? zoneOf('mr') : 'front', 'mr');
+  }
+  async function mrBegin(forBasket) {
+    if (!(await E.mrSupported())) {
+      open(P => {
+        exitBtn(P);
+        P.glass(460, 240, 1000, 600, 60);
+        P.text('여기서는 MR을 쓸 수 없어요', W / 2, 380, { size: 52, weight: 700 });
+        P.text('혼합현실(MR)은 Quest 헤드셋의 브라우저에서 열었을 때만 쓸 수 있어요. 컴퓨터 화면이나 컴퓨터에 연결한 VR에서는 쓸 수 없어요.', W / 2, 500, { size: 32, color: C.sub, maxW: 860 });
+        P.button('ok', 610, 660, 700, 100, '확인', () => mrInfo(), { kind: 'primary' });
+      }, 'front', 'mrNo');
+      return;
+    }
+    const lv = mrLevel();
+    const target = forBasket ? (mrFlowerNeed() || mrTarget(lv)) : mrTarget(lv);
+    mr = { lv, target, picked: {}, wrong: 0, hints: 0, forBasket, items: [], phase: 'wait' };
+    main.show(false); current = null; tilesHide();
+    E.toast('잠시 후 내 방이 보여요', false, 2500);
+    E.enterMR();
+  }
+  E.onMRCancel = () => { mr = null; };
+  E.onEnterMR = () => {
+    if (!mr) { const lv = mrLevel(); mr = { lv, target: mrTarget(lv), picked: {}, wrong: 0, hints: 0, forBasket: false, items: [], phase: 'wait' }; }
+    mrSpawn();
+    if (mr.forBasket) { mr.phase = 'pick'; mrHud(); E.toast('기억한 꽃만 골라서 따 보세요', true, 4000); }
+    else mrShowTarget(false);
+  };
+  E.onExitMR = () => {
+    mrClear(); clearInterval(mrTimer); mr = null;
+    main.show(false); current = null;
+  };
+  function mrClear() {
+    if (!mr) return;
+    for (const it of mr.items) { E.removeTarget(it.hb); E.mrRoot.remove(it.g); }
+    mr.items = [];
+  }
+  function mrSpawn() {
+    mrClear();
+    const list = [];
+    Object.entries(mr.target).forEach(([t, n]) => { for (let k = 0; k < n; k++) list.push(t); });
+    const extra = 4 + mr.lv;
+    for (let k = 0; k < extra; k++) list.push(MR_TYPES[Math.floor(Math.random() * MR_TYPES.length)]);
+    list.sort(() => Math.random() - 0.5);
+    const pts = [];
+    for (let tries = 0; pts.length < list.length && tries < 2000; tries++) {
+      const a = (Math.random() * 2 - 1) * 1.9, r = 0.9 + Math.random() * 0.9;
+      const x = Math.sin(a) * r, z = -Math.cos(a) * r;
+      if (pts.every(([px, pz]) => Math.hypot(px - x, pz - z) > 0.42)) pts.push([x, z]);
+    }
+    const tuftMat = new THREE.MeshStandardMaterial({ color: 0x6e8f4a, roughness: 1, transparent: true, opacity: 0.9 });
+    list.forEach((t, k) => {
+      if (!pts[k]) return;
+      const g = new THREE.Group();
+      const f = flower3D(t); f.scale.multiplyScalar(1.7); g.add(f);
+      const tuft = new THREE.Mesh(new THREE.CircleGeometry(0.11, 24).rotateX(-Math.PI / 2), tuftMat); tuft.position.y = 0.004; g.add(tuft);
+      const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.65, 10), new THREE.MeshBasicMaterial({ visible: false }));
+      hb.position.y = 0.32; g.add(hb);
+      g.position.set(pts[k][0], 0, pts[k][1]); g.rotation.y = Math.random() * 6.28; g.scale.setScalar(0.001);
+      const it = { t, g, hb, born: performance.now() + k * 120, hov: false, shake: 0, gone: 0 };
+      hb.userData.onSelect = () => mrPick(it);
+      hb.userData.onHover = on => { it.hov = on; };
+      E.mrRoot.add(g); E.addTarget(hb); mr.items.push(it);
+    });
+  }
+  function mrFrame(now) {
+    if (!mr) return;
+    for (let k = mr.items.length - 1; k >= 0; k--) {
+      const it = mr.items[k];
+      if (it.gone) {
+        const u = (now - it.gone) / 700;
+        if (u >= 1) { E.mrRoot.remove(it.g); mr.items.splice(k, 1); continue; }
+        it.g.position.y = u * 0.5; it.g.scale.setScalar(Math.max(0.001, 1 - u));
+        continue;
+      }
+      const u = Math.min(1, Math.max(0, (now - it.born) / 600));
+      let sc = (1 - Math.pow(1 - u, 3)) * (it.hov && mr.phase === 'pick' ? 1.12 : 1);
+      it.g.scale.setScalar(Math.max(0.001, sc));
+      const sh = now - it.shake;
+      it.g.rotation.z = sh < 600 ? Math.sin(sh / 40) * 0.18 * (1 - sh / 600) : 0;
+    }
+  }
+  function mrPick(it) {
+    if (!mr || mr.phase !== 'pick' || it.gone) return;
+    const t = it.t, need = (mr.target[t] || 0) - (mr.picked[t] || 0);
+    if (need > 0) {
+      it.gone = performance.now(); E.removeTarget(it.hb);
+      mr.picked[t] = (mr.picked[t] || 0) + 1;
+      S.flowers[t] = (S.flowers[t] || 0) + 1; E.save();
+      mrHud();
+      if (Object.keys(mr.target).every(k => (mr.picked[k] || 0) >= mr.target[k])) { mr.phase = 'done'; setTimeout(mrDone, 900); }
+    } else {
+      mr.wrong++; it.shake = performance.now();
+      E.toast(mr.target[t] ? '그 꽃은 이미 충분히 땄어요' : '이 꽃은 아니었어요. 다시 떠올려 볼까요?', false, 2200);
+    }
+  }
+  function mrShowTarget(isHint) {
+    if (!mr) return;
+    mr.phase = 'show';
+    if (isHint) mr.hints++;
+    const sec = isHint ? 3 : [0, 6, 6, 7, 7, 6][mr.lv] || 6, t0 = performance.now();
+    open(P => {
+      P.glass(360, 110, 1200, 760, 60);
+      P.text(isHint ? '다시 한 번 볼까요?' : (mr.forBasket ? '꽃바구니에 필요한 꽃이에요' : '이 꽃들을 기억해 주세요'), W / 2, 200, { size: 54, weight: 700 });
+      const list = Object.entries(mr.target), n = list.length;
+      list.forEach(([t, c], k) => {
+        const x = W / 2 + (k - (n - 1) / 2) * 340;
+        P.circle(x, 400, 120, '#f8f6ef'); P.icon(FLOWERS[t].icon, x, 400, 180);
+        P.text(`${FLOWERS[t].name} ${c}송이`, x, 575, { size: 42, weight: 700 });
+      });
+      const left = Math.max(0, sec - (performance.now() - t0) / 1000);
+      P.rect(560, 660, 800, 26, 13, 'rgba(255,255,255,0.7)');
+      P.rect(560, 660, Math.max(26, 800 * left / sec), 26, 13, C.green);
+      P.text('잠시 후 사라져요. 그다음 이 꽃들만 따 주세요', W / 2, 760, { size: 32, color: C.sub });
+    }, 'front', 'mrShow');
+    clearInterval(mrTimer);
+    mrTimer = setInterval(() => {
+      if (!mr || current !== 'mrShow') { clearInterval(mrTimer); return; }
+      if (performance.now() - t0 >= sec * 1000) { clearInterval(mrTimer); mr.phase = 'pick'; mrHud(); E.toast('이제 기억한 꽃을 따 보세요', true, 3000); return; }
+      main.refresh();
+    }, 200);
+  }
+  function mrHud() {
+    if (!mr) return;
+    const total = sumv(mr.target), got = sumv(mr.picked);
+    open(P => {
+      P.glass(400, 30, 1120, 170, 50);
+      P.text(`딴 꽃 ${got} / ${total}송이`, 640, 115, { size: 44, weight: 700 });
+      P.button('hint', 900, 60, 300, 110, '다시 보기', () => mrShowTarget(true), { size: 34, voice: ['다시 보기'] });
+      P.button('end', 1220, 60, 270, 110, '끝내기', () => mrQuit(), { size: 34, voice: ['끝내기', '그만'] });
+    }, 'front', 'mrHud');
+    E.placeInFront(main, 2.0, 0.28);
+  }
+  function mrQuit() {
+    if (mr) log('train', { game: 'mr', level: mr.lv, quit: true, picked: sumv(mr.picked) });
+    mrReturn = null; E.exitMR(true);
+  }
+  function mrDone() {
+    if (!mr) return;
+    const perfect = !mr.wrong && !mr.hints;
+    const reward = Math.max(0, Math.min(10, 50 - S.trainCoinsToday));
+    S.coins += reward; S.trainCoinsToday += reward;
+    let unlocked = false;
+    if (!mr.forBasket && perfect && mr.lv === mrLevel() && mrLevel() < 5) { S.mrLevel = mrLevel() + 1; unlocked = true; }
+    log('train', { game: 'mr', level: mr.lv, ok: true, wrong: mr.wrong, hints: mr.hints, basket: mr.forBasket });
+    E.save(); E.refreshWatch();
+    const fb = mr.forBasket, lv = mr.lv, wrong = mr.wrong, hints = mr.hints;
+    open(P => {
+      P.glass(410, 90, 1100, 880, 60);
+      P.circle(W / 2, 220, 80, C.green); drawGlyph(P.ctx, 'check', W / 2, 220, 100);
+      P.text(perfect ? '모두 기억해서 땄어요!' : '꽃을 다 땄어요!', W / 2, 360, { size: 54, weight: 700 });
+      const label = reward ? `꽃 코인 +${reward}` : '오늘 보상은 다 받았어요', ts = reward ? 38 : 30;
+      P.ctx.font = `700 ${ts}px ${FONT}`;
+      const tw = P.ctx.measureText(label).width, pw = tw + 44 + 24 + 64, px = W / 2 - pw / 2;
+      P.rect(px, 410, pw, 80, 40, 'rgba(238,244,232,0.85)');
+      drawGlyph(P.ctx, 'coin', px + 32 + 22, 450, 44);
+      P.text(label, px + 32 + 44 + 24, 452, { size: ts, weight: 700, color: C.greenDark, align: 'left' });
+      P.text(`잘못 고른 꽃 ${wrong}번 · 다시 보기 ${hints}번`, W / 2, 540, { size: 32, color: C.sub });
+      P.text(unlocked ? `${lv + 1}단계가 열렸어요. 딴 꽃은 보관함에 넣었어요.` : '딴 꽃은 보관함에 넣었어요. 틀려도 괜찮아요.', W / 2, 595, { size: 32, color: C.sub, maxW: 900 });
+      if (fb) P.button('basket', 560, 650, 800, 105, '꽃바구니 만들러 가기', () => { const id = bk.style; mrReturn = () => basketCheck(id); E.exitMR(true); }, { kind: 'primary', voice: ['꽃바구니', '만들러'] });
+      else P.button('again', 560, 650, 800, 105, '한 번 더 하기', () => mrAgain(), { kind: 'primary', voice: ['한 번 더', '다시'] });
+      P.button('home', 560, 775, 800, 105, '정원으로 돌아가기', () => { mrReturn = null; E.exitMR(true); }, { voice: ['정원으로', '돌아가기'] });
+    }, 'front', 'mrDone');
+  }
+  function mrAgain() {
+    const lv = mrLevel();
+    mrClear();
+    mr = { lv, target: mrTarget(lv), picked: {}, wrong: 0, hints: 0, forBasket: false, items: [], phase: 'wait' };
+    mrSpawn(); mrShowTarget(false);
   }
   // ================= 꽃바구니 만들기 =================
   let bk = null; // { style, mode, slots: [type|null], order: [type], pick }
@@ -1973,24 +2161,27 @@ export function startGame(E) {
   }
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
-    entrancesFrame(now); popsFrame(now);
+    if (!E.inMR()) entrancesFrame(now);
+    popsFrame(now); mrFrame(now);
     if (tea && current === 'teaChat' && E.listening && now - teaLvT > 150) { teaLvT = now; tea.redraw(); }
     _tick(dt, now);
   };
 
   // ================= 버튼 / 시작 =================
   E.onMenuButton = () => {
+    if (E.inMR()) { if (mr && mr.phase === 'pick') mrHud(); return; }
     if (E.carrying) { E.carry(null); return; }
     if (main.visible && current === 'menu') closeAll(); else { teaStop(); flash = null; shop = null; mainMenu(); }
   };
   E.onBackButton = () => {
+    if (E.inMR()) return;
     if (E.carrying) { E.carry(null); E.toast('내려놓았어요', false); return; }
     if (main.visible) { if (current === 'teaChat') teaEnd(); else closeAll(); }
   };
   const startPose = () => E.setPose(40.1, -10.5, 0);
   E.onEnterDesktop = () => { startPose(); setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); }, 100); };
-  E.onEnterVR = () => { startPose(); setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
+  E.onEnterVR = () => { startPose(); if (mrReturn) { const f = mrReturn; mrReturn = null; setTimeout(f, 300); return; } setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
   startPose();
   E.refreshWatch();
-  window.MG_game = { customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
+  window.MG_game = { mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
 }
