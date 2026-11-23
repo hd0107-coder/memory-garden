@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=24';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=24';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=25';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=25';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -97,6 +97,8 @@ export function startGame(E) {
     if (msg) E.toast(msg);
   }
   const zoneOf = id => ZONES[id];
+  // 화면을 놓을 곳: 그 장소 가까이 있으면 그곳에, 멀리 있으면 바로 눈앞에
+  const placeOf = id => { const z = ZONES[id], h = E.headB(); return Math.hypot(h.x - z.stand[0], h.y - z.stand[1]) < 3.5 ? z : 'front'; };
 
   // 공통: 오른쪽 위 나가기 버튼
   const exitBtn = (P, cb = () => closeAll('随时可以按 X 键打开菜单')) => P.roundBtn('exit', 90, 90, 48, 'exit', cb, ['离开', '结束', '停']);
@@ -185,8 +187,8 @@ export function startGame(E) {
       P.text('今天想做什么训练？', W / 2, 170, { size: 34, color: C.sub });
       backBtn(P, () => mainMenu());
       const cards = [
-        ['flash', '闪光找花', '记住刚才出现的\n花的位置', 'anemone', () => guideTo('flash'), ['闪光', '找花']],
-        ['shop', '记忆花店', '记住要买的东西\n在花店挑选', 'watering_can', () => guideTo('shop'), ['记忆花店', '花店']],
+        ['flash', '闪光找花', '记住刚才出现的\n花的位置', 'anemone', () => { activeZone = 'flash'; flashStart(); }, ['闪光', '找花']],
+        ['shop', '记忆花店', '记住要买的东西\n在花店挑选', 'watering_can', () => { activeZone = 'shop'; shopStart(); }, ['记忆花店', '花店']],
         ['mr', '摘花', '记住花\n在房间里摘', 'poppy', () => mrInfo(), ['摘花']],
         ['basket', '制作花篮', '用我的花\n做花篮', 'ic_basket', () => basketStart(), ['花篮']]
       ];
@@ -851,7 +853,7 @@ export function startGame(E) {
       P.text(`${cf.cols}×${cf.rows}格 · 花${cf.n}朵${cf.bfly ? ' · 蝴蝶' : ''} · 回答时间${cf.limit}秒`, W / 2, 685, { size: 30, color: C.greenDark, weight: 600 });
       P.button('start', 660, 740, 600, 110, '开始', () => flashInstr(), { kind: 'primary', voice: ['开始'] });
       P.hint('试着说“开始”', 970, 560);
-    }, zoneOf('flash'), 'flashStart');
+    }, placeOf('flash'), 'flashStart');
     E.say('闪光找花。请记住花的位置。');
   }
   function flashInstr() {
@@ -877,7 +879,7 @@ export function startGame(E) {
       });
       P.text('关卡越高，格子和花越多，时间越短。第4关开始还会出现蝴蝶。', W / 2, 740, { size: 30, color: C.sub });
       P.button('ok', 660, 800, 600, 100, '确认', () => flashRun(flashSel), { kind: 'primary', voice: ['确认', '开始'] });
-    }, zoneOf('flash'), 'flashInstr');
+    }, placeOf('flash'), 'flashInstr');
     E.say('花会出现几秒钟。请记住它在哪一格。');
   }
   function flashTitle() {
@@ -919,7 +921,7 @@ export function startGame(E) {
       }
       const tip = flash.phase === 'choose' ? (cfg.n > 1 ? `指向格子\n再按按钮（${flash.picks.length}/${cfg.n}）` : '指向格子\n再按按钮') : flash.phase === 'chooseB' ? '请选出蝴蝶\n停过的格子' : '';
       if (tip) { P.rect(1540, 740, 320, 130, 36, 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.95)', 3); P.text(tip, 1700, 805, { size: 30, weight: 600, color: '#444', maxW: 300 }); }
-    }, zoneOf('flash'), 'flashRun');
+    }, placeOf('flash'), 'flashRun');
     // 칸 배치: 제목 아래(190px)부터 아래 끝(1020px)까지, 오른쪽 타이머를 피해서
     const gap = 0.035;
     const availH = (1020 - 190) * PX, availW = (1500 - 260) * PX;
@@ -1014,7 +1016,7 @@ export function startGame(E) {
       const nextLv = ok ? lv + 1 : lv;
       P.button('next', 660, 650, 600, 95, ok ? '进入下一关' : '再来一次', () => { flashSel = nextLv; flashPage = Math.floor((nextLv - 1) / 5); flashRun(nextLv); }, { kind: 'primary', voice: ['下一个', '再'] });
       P.button('home', 660, 765, 600, 95, '回到花园', () => closeAll('回到花园了'), { voice: ['回花园', '返回'] });
-    }, zoneOf('flash'), 'flashResult');
+    }, placeOf('flash'), 'flashResult');
     E.say(ok ? '记得真好！' : '好可惜！再试一次吧？');
   }
 
@@ -1039,7 +1041,7 @@ export function startGame(E) {
       P.button('start', 660, 730, 600, 110, '开始', () => shopInstr(), { kind: 'primary', voice: ['开始'] });
       exitBtn(P);
       P.hint('试着说“开始”', 960, 560);
-    }, zoneOf('shop'), 'shopStart');
+    }, placeOf('shop'), 'shopStart');
     E.say('记忆花店。记住要买的东西再挑选。');
   }
   // 훈련 없이 사기: 장바구니에 담고 → 장바구니 확인 → 직접 코인을 세어 계산
@@ -1071,7 +1073,7 @@ export function startGame(E) {
       const n = cartCount();
       P.button('cart', 1020, 945, 520, 95, n ? `查看购物车（${n}个）` : '购物车是空的', () => cartView(), { kind: 'primary', disabled: !n, size: 36, voice: ['购物车', '结算'] });
       P.button('train', 380, 945, 600, 95, '用记忆训练来买', () => shopStart(), { size: 32, voice: ['训练', '记忆训练'] });
-    }, zoneOf('shop'), 'shopBuy');
+    }, placeOf('shop'), 'shopBuy');
     E.say('这里是记忆花店。点想要的东西放进购物车。');
   }
   function cartView() {
@@ -1098,7 +1100,7 @@ export function startGame(E) {
       P.text('合计要自己加起来，结算时用花币付', W / 2, 860, { size: 28, color: C.sub });
       P.button('more', 460, 930, 480, 100, '再选一些', () => shopBuy(), { voice: ['再选一些', '更多'] });
       P.button('pay', 980, 930, 480, 100, '结算', () => { cartPay = { tray: [], msg: '', tries: 0 }; cartPayView(); }, { kind: 'primary', disabled: !ent.length, voice: ['结算'] });
-    }, zoneOf('shop'), 'cartView');
+    }, placeOf('shop'), 'cartView');
     E.say('这里是购物车，看看你买了什么。');
   }
   function cartPayView() {
@@ -1163,10 +1165,10 @@ export function startGame(E) {
           bought.slice(0, 6).forEach(([id, q], k) => { const cx = W / 2 + (k - (Math.min(6, bought.length) - 1) / 2) * 150; shopIcon(Q, id, cx, 590, 100); Q.text(`×${q}`, cx, 665, { size: 30, weight: 700 }); });
           Q.button('more', 560, 760, 390, 100, '再买一些', () => shopBuy(), { voice: ['更多'] });
           Q.button('home', 970, 760, 390, 100, '回花园', () => closeAll('回到花园了'), { kind: 'primary', voice: ['花园'] });
-        }, zoneOf('shop'), 'cartDone');
+        }, placeOf('shop'), 'cartDone');
         E.say('算对了！');
       }, { kind: 'primary', disabled: !sum, voice: ['结算'] });
-    }, zoneOf('shop'), 'cartPay');
+    }, placeOf('shop'), 'cartPay');
     E.say('把价格全部加起来，付花币吧');
   }
   function shopInstr() {
@@ -1186,7 +1188,7 @@ export function startGame(E) {
       P.text('进了花店就看不到清单了。买错了东西也会留在保管箱里。', W / 2, 740, { size: 30, color: C.sub });
       P.button('ok', 660, 800, 600, 100, '确认', () => shopList(shopSel), { kind: 'primary', voice: ['确认', '开始'] });
       exitBtn(P);
-    }, zoneOf('shop'), 'shopInstr');
+    }, placeOf('shop'), 'shopInstr');
   }
   function makeList(level) {
     const useful = ['seed_tulip', 'seed_daisy', 'seed_sunflower', 'pot', 'fertilizer', 'soil', 'gloves', 'watering_can', 'labels', 'ribbon', 'basket', 'wrap', 'hand_fork', 'hoe'];
@@ -1219,7 +1221,7 @@ export function startGame(E) {
       P.rect(660, 230 + ph, 600, 14, 7, 'rgba(255,255,255,0.5)');
       P.rect(660, 230 + ph, 600 * left, 14, 7, C.green);
       P.button('done', 660, 270 + ph, 600, 100, '都记住了', () => shopPick(), { kind: 'primary', voice: ['都记住', '我记住了', '做好了'] });
-    }, zoneOf('shop'), 'shopList');
+    }, placeOf('shop'), 'shopList');
     E.say('购物清单。' + shop.list.map(l => ITEMS[l.id].name + (l.qty > 1 ? ` ${l.qty}个` : '')).join(', '));
     const timer = setInterval(() => {
       if (!shop || current !== 'shopList') { clearInterval(timer); return; }
@@ -1255,7 +1257,7 @@ export function startGame(E) {
       P.text(`${shop.list.length}个中选了${m}个`, 680, 986, { size: 38, weight: 700 });
       P.button('pay', 920, 940, 530, 90, '结算', () => shopPay(), { kind: 'primary', disabled: m === 0, voice: ['结算'] });
       if (shop.level === 3) P.text('需要好几个的话就多按几次', W / 2, 300 - 12, { size: 26, color: '#555' });
-    }, zoneOf('shop'), 'shopPick');
+    }, placeOf('shop'), 'shopPick');
     E.say('请选清单上的东西');
   }
   const shopTotal = () => Object.entries(shop.picked).reduce((a, [id, q]) => a + ITEMS[id].price * q, 0);
@@ -1315,7 +1317,7 @@ export function startGame(E) {
         }
       }, { kind: 'primary', disabled: !sum, voice: ['结算'] });
       P.hint('试着说“结算”', 1040, 520);
-    }, zoneOf('shop'), 'shopPay');
+    }, placeOf('shop'), 'shopPay');
     E.say('把价格全部加起来，付花币吧');
   }
   function shopResult(total) {
@@ -1350,7 +1352,7 @@ export function startGame(E) {
       P.text('付款完成了。买的东西已经放进保管箱。', W / 2, 660, { size: 30, color: C.sub });
       P.button('again', 660, 730, 600, 95, '再来一次', () => { shopSel = Math.min(S.shopLevel, allOk && lv < 3 ? lv + 1 : lv); shopList(shopSel); }, { kind: 'primary', voice: ['再'] });
       P.button('home', 660, 845, 600, 95, '回到花园', () => closeAll('回到花园了'), { voice: ['回花园', '返回'] });
-    }, zoneOf('shop'), 'shopResult');
+    }, placeOf('shop'), 'shopResult');
     E.say(allOk ? '全部买对了！' : `清单上${shop.list.length}个里买对了${okN}个`);
     shop = null;
   }
@@ -2192,6 +2194,9 @@ export function startGame(E) {
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
     if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('签到奖励：获得 200 花币'); }
+    // 눈앞에 큰 화면이 열려 있으면 정원 보관함 버튼은 잠시 숨김
+    const gbOn = !E.inMR() && (!main.visible || activeZone === 'garden');
+    if (gardenBar.visible !== gbOn) gardenBar.show(gbOn);
     if (!E.inMR()) entrancesFrame(now);
     popsFrame(now); mrFrame(now);
     if (tea && current === 'teaChat' && E.listening && now - teaLvT > 150) { teaLvT = now; tea.redraw(); }
@@ -2214,5 +2219,5 @@ export function startGame(E) {
   E.onEnterVR = () => { startPose(); if (mrReturn) { const f = mrReturn; mrReturn = null; setTimeout(f, 300); return; } setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
   startPose();
   E.refreshWatch();
-  window.MG_game = { _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
+  window.MG_game = { trainingArea, flashStart, shopStart, _cur: () => current, _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
 }

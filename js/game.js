@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=24';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=24';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=25';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=25';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -97,6 +97,8 @@ export function startGame(E) {
     if (msg) E.toast(msg);
   }
   const zoneOf = id => ZONES[id];
+  // 화면을 놓을 곳: 그 장소 가까이 있으면 그곳에, 멀리 있으면 바로 눈앞에
+  const placeOf = id => { const z = ZONES[id], h = E.headB(); return Math.hypot(h.x - z.stand[0], h.y - z.stand[1]) < 3.5 ? z : 'front'; };
 
   // 공통: 오른쪽 위 나가기 버튼
   const exitBtn = (P, cb = () => closeAll('언제든 X 버튼으로 메뉴를 열 수 있어요')) => P.roundBtn('exit', 90, 90, 48, 'exit', cb, ['나가기', '끝내기', '그만']);
@@ -185,8 +187,8 @@ export function startGame(E) {
       P.text('오늘은 어떤 훈련을 해 볼까요?', W / 2, 170, { size: 34, color: C.sub });
       backBtn(P, () => mainMenu());
       const cards = [
-        ['flash', '반짝 꽃 찾기', '잠깐 나타난 꽃의\n위치 기억하기', 'anemone', () => guideTo('flash'), ['반짝', '꽃 찾기']],
-        ['shop', '기억 꽃집', '살 물건을 기억해\n꽃집에서 고르기', 'watering_can', () => guideTo('shop'), ['기억 꽃집', '꽃집']],
+        ['flash', '반짝 꽃 찾기', '잠깐 나타난 꽃의\n위치 기억하기', 'anemone', () => { activeZone = 'flash'; flashStart(); }, ['반짝', '꽃 찾기']],
+        ['shop', '기억 꽃집', '살 물건을 기억해\n꽃집에서 고르기', 'watering_can', () => { activeZone = 'shop'; shopStart(); }, ['기억 꽃집', '꽃집']],
         ['mr', '꽃 따기', '꽃을 기억해서\n내 방에서 따기', 'poppy', () => mrInfo(), ['꽃 따기']],
         ['basket', '꽃바구니 만들기', '내 꽃으로\n꽃바구니 만들기', 'ic_basket', () => basketStart(), ['꽃바구니']]
       ];
@@ -851,7 +853,7 @@ export function startGame(E) {
       P.text(`${cf.cols}×${cf.rows}칸 · 꽃 ${cf.n}송이${cf.bfly ? ' · 나비' : ''} · 대답 시간 ${cf.limit}초`, W / 2, 685, { size: 30, color: C.greenDark, weight: 600 });
       P.button('start', 660, 740, 600, 110, '시작하기', () => flashInstr(), { kind: 'primary', voice: ['시작'] });
       P.hint('“시작”이라고 말해 보세요', 970, 560);
-    }, zoneOf('flash'), 'flashStart');
+    }, placeOf('flash'), 'flashStart');
     E.say('반짝 꽃 찾기. 꽃의 위치를 기억하세요.');
   }
   function flashInstr() {
@@ -877,7 +879,7 @@ export function startGame(E) {
       });
       P.text('단계가 올라갈수록 칸과 꽃이 늘고 시간이 짧아져요. 4단계부터는 나비도 나와요.', W / 2, 740, { size: 30, color: C.sub });
       P.button('ok', 660, 800, 600, 100, '확인', () => flashRun(flashSel), { kind: 'primary', voice: ['확인', '시작'] });
-    }, zoneOf('flash'), 'flashInstr');
+    }, placeOf('flash'), 'flashInstr');
     E.say('꽃이 몇 초 동안 나타나요. 어느 칸에 있었는지 기억하세요.');
   }
   function flashTitle() {
@@ -919,7 +921,7 @@ export function startGame(E) {
       }
       const tip = flash.phase === 'choose' ? (cfg.n > 1 ? `칸을 가리키고\n버튼을 누르세요 (${flash.picks.length}/${cfg.n})` : '칸을 가리키고\n버튼을 누르세요') : flash.phase === 'chooseB' ? '나비가 있던 칸을\n골라 주세요' : '';
       if (tip) { P.rect(1540, 740, 320, 130, 36, 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.95)', 3); P.text(tip, 1700, 805, { size: 30, weight: 600, color: '#444', maxW: 300 }); }
-    }, zoneOf('flash'), 'flashRun');
+    }, placeOf('flash'), 'flashRun');
     // 칸 배치: 제목 아래(190px)부터 아래 끝(1020px)까지, 오른쪽 타이머를 피해서
     const gap = 0.035;
     const availH = (1020 - 190) * PX, availW = (1500 - 260) * PX;
@@ -1014,7 +1016,7 @@ export function startGame(E) {
       const nextLv = ok ? lv + 1 : lv;
       P.button('next', 660, 650, 600, 95, ok ? '다음 단계로' : '다시 하기', () => { flashSel = nextLv; flashPage = Math.floor((nextLv - 1) / 5); flashRun(nextLv); }, { kind: 'primary', voice: ['다음', '다시'] });
       P.button('home', 660, 765, 600, 95, '정원으로 돌아가기', () => closeAll('정원으로 돌아왔어요'), { voice: ['정원으로', '돌아가기'] });
-    }, zoneOf('flash'), 'flashResult');
+    }, placeOf('flash'), 'flashResult');
     E.say(ok ? '잘 기억했어요!' : '아쉬워요! 다시 해 볼까요?');
   }
 
@@ -1039,7 +1041,7 @@ export function startGame(E) {
       P.button('start', 660, 730, 600, 110, '시작하기', () => shopInstr(), { kind: 'primary', voice: ['시작'] });
       exitBtn(P);
       P.hint('“시작”이라고 말해 보세요', 960, 560);
-    }, zoneOf('shop'), 'shopStart');
+    }, placeOf('shop'), 'shopStart');
     E.say('기억 꽃집. 살 물건을 기억해서 골라요.');
   }
   // 훈련 없이 사기: 장바구니에 담고 → 장바구니 확인 → 직접 코인을 세어 계산
@@ -1071,7 +1073,7 @@ export function startGame(E) {
       const n = cartCount();
       P.button('cart', 1020, 945, 520, 95, n ? `장바구니 보기 (${n}개)` : '장바구니가 비어 있어요', () => cartView(), { kind: 'primary', disabled: !n, size: 36, voice: ['장바구니', '계산'] });
       P.button('train', 380, 945, 600, 95, '기억 훈련으로 사기', () => shopStart(), { size: 32, voice: ['훈련', '기억 훈련'] });
-    }, zoneOf('shop'), 'shopBuy');
+    }, placeOf('shop'), 'shopBuy');
     E.say('기억 꽃집이에요. 필요한 물건을 눌러 장바구니에 담아요.');
   }
   function cartView() {
@@ -1098,7 +1100,7 @@ export function startGame(E) {
       P.text('합계는 직접 더해서 계산할 때 코인으로 내요', W / 2, 860, { size: 28, color: C.sub });
       P.button('more', 460, 930, 480, 100, '더 고르기', () => shopBuy(), { voice: ['더 고르기', '더'] });
       P.button('pay', 980, 930, 480, 100, '계산하기', () => { cartPay = { tray: [], msg: '', tries: 0 }; cartPayView(); }, { kind: 'primary', disabled: !ent.length, voice: ['계산'] });
-    }, zoneOf('shop'), 'cartView');
+    }, placeOf('shop'), 'cartView');
     E.say('장바구니예요. 산 물건을 확인해 보세요.');
   }
   function cartPayView() {
@@ -1163,10 +1165,10 @@ export function startGame(E) {
           bought.slice(0, 6).forEach(([id, q], k) => { const cx = W / 2 + (k - (Math.min(6, bought.length) - 1) / 2) * 150; shopIcon(Q, id, cx, 590, 100); Q.text(`×${q}`, cx, 665, { size: 30, weight: 700 }); });
           Q.button('more', 560, 760, 390, 100, '더 사기', () => shopBuy(), { voice: ['더'] });
           Q.button('home', 970, 760, 390, 100, '정원으로', () => closeAll('정원으로 돌아왔어요'), { kind: 'primary', voice: ['정원'] });
-        }, zoneOf('shop'), 'cartDone');
+        }, placeOf('shop'), 'cartDone');
         E.say('잘 계산했어요!');
       }, { kind: 'primary', disabled: !sum, voice: ['계산'] });
-    }, zoneOf('shop'), 'cartPay');
+    }, placeOf('shop'), 'cartPay');
     E.say('가격을 모두 더해서 꽃 코인을 내 주세요');
   }
   function shopInstr() {
@@ -1186,7 +1188,7 @@ export function startGame(E) {
       P.text('꽃집에 들어가면 목록은 보이지 않아요. 잘못 사도 물건은 보관함에 남아요.', W / 2, 740, { size: 30, color: C.sub });
       P.button('ok', 660, 800, 600, 100, '확인', () => shopList(shopSel), { kind: 'primary', voice: ['확인', '시작'] });
       exitBtn(P);
-    }, zoneOf('shop'), 'shopInstr');
+    }, placeOf('shop'), 'shopInstr');
   }
   function makeList(level) {
     const useful = ['seed_tulip', 'seed_daisy', 'seed_sunflower', 'pot', 'fertilizer', 'soil', 'gloves', 'watering_can', 'labels', 'ribbon', 'basket', 'wrap', 'hand_fork', 'hoe'];
@@ -1219,7 +1221,7 @@ export function startGame(E) {
       P.rect(660, 230 + ph, 600, 14, 7, 'rgba(255,255,255,0.5)');
       P.rect(660, 230 + ph, 600 * left, 14, 7, C.green);
       P.button('done', 660, 270 + ph, 600, 100, '다 기억했어요', () => shopPick(), { kind: 'primary', voice: ['다 기억', '기억했어요', '다했어요'] });
-    }, zoneOf('shop'), 'shopList');
+    }, placeOf('shop'), 'shopList');
     E.say('쇼핑 목록. ' + shop.list.map(l => ITEMS[l.id].name + (l.qty > 1 ? ` ${l.qty}개` : '')).join(', '));
     const timer = setInterval(() => {
       if (!shop || current !== 'shopList') { clearInterval(timer); return; }
@@ -1255,7 +1257,7 @@ export function startGame(E) {
       P.text(`${shop.list.length}개 중 ${m}개 선택`, 680, 986, { size: 38, weight: 700 });
       P.button('pay', 920, 940, 530, 90, '계산하기', () => shopPay(), { kind: 'primary', disabled: m === 0, voice: ['계산'] });
       if (shop.level === 3) P.text('여러 개가 필요하면 한 번 더 누르세요', W / 2, 300 - 12, { size: 26, color: '#555' });
-    }, zoneOf('shop'), 'shopPick');
+    }, placeOf('shop'), 'shopPick');
     E.say('목록에 있던 물건을 골라 주세요');
   }
   const shopTotal = () => Object.entries(shop.picked).reduce((a, [id, q]) => a + ITEMS[id].price * q, 0);
@@ -1315,7 +1317,7 @@ export function startGame(E) {
         }
       }, { kind: 'primary', disabled: !sum, voice: ['계산'] });
       P.hint('“계산”이라고 말해 보세요', 1040, 520);
-    }, zoneOf('shop'), 'shopPay');
+    }, placeOf('shop'), 'shopPay');
     E.say('가격을 모두 더해서 꽃 코인을 내 주세요');
   }
   function shopResult(total) {
@@ -1350,7 +1352,7 @@ export function startGame(E) {
       P.text('결제가 끝났어요. 산 물건은 보관함에 넣어 두었어요.', W / 2, 660, { size: 30, color: C.sub });
       P.button('again', 660, 730, 600, 95, '다시 하기', () => { shopSel = Math.min(S.shopLevel, allOk && lv < 3 ? lv + 1 : lv); shopList(shopSel); }, { kind: 'primary', voice: ['다시'] });
       P.button('home', 660, 845, 600, 95, '정원으로 돌아가기', () => closeAll('정원으로 돌아왔어요'), { voice: ['정원으로', '돌아가기'] });
-    }, zoneOf('shop'), 'shopResult');
+    }, placeOf('shop'), 'shopResult');
     E.say(allOk ? '모두 맞게 샀어요!' : `목록의 ${shop.list.length}개 중 ${okN}개를 샀어요`);
     shop = null;
   }
@@ -2192,6 +2194,9 @@ export function startGame(E) {
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
     if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('출석 보상으로 꽃 코인 200개를 받았어요'); }
+    // 눈앞에 큰 화면이 열려 있으면 정원 보관함 버튼은 잠시 숨김
+    const gbOn = !E.inMR() && (!main.visible || activeZone === 'garden');
+    if (gardenBar.visible !== gbOn) gardenBar.show(gbOn);
     if (!E.inMR()) entrancesFrame(now);
     popsFrame(now); mrFrame(now);
     if (tea && current === 'teaChat' && E.listening && now - teaLvT > 150) { teaLvT = now; tea.redraw(); }
@@ -2214,5 +2219,5 @@ export function startGame(E) {
   E.onEnterVR = () => { startPose(); if (mrReturn) { const f = mrReturn; mrReturn = null; setTimeout(f, 300); return; } setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
   startPose();
   E.refreshWatch();
-  window.MG_game = { _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
+  window.MG_game = { trainingArea, flashStart, shopStart, _cur: () => current, _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
 }
