@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=20';
-import { loadState, saveState } from './data.js?v=20';
-import { startGame } from './game.js?v=20';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=21';
+import { loadState, saveState } from './data.js?v=21';
+import { startGame } from './game.js?v=21';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -564,6 +564,9 @@ renderer.setAnimationLoop(() => {
   // 컨트롤러 스틱
   if (E.inXR()) {
     const session = renderer.xr.getSession();
+    let hasLeft = false;
+    for (const src of session.inputSources) if (src.handedness === 'left' && src.gamepad) hasLeft = true;
+    if (!hasLeft && !E._oneHandTold && E.inXR()) { E._oneHandTold = true; setTimeout(() => { const ss = renderer.xr.getSession(); if (ss && ![...ss.inputSources].some(x => x.handedness === 'left' && x.gamepad)) E.toast('没有找到左手手柄。往前或往后推右手摇杆，也可以走路。', true, 6000); else E._oneHandTold = false; }, 4500); }
     for (const src of session.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
       const ax = gp.axes.length >= 4 ? [gp.axes[2], gp.axes[3]] : [gp.axes[0] || 0, gp.axes[1] || 0];
@@ -579,15 +582,15 @@ renderer.setAnimationLoop(() => {
           if (Math.hypot(ax[0], ax[1]) > 0.2) {
             const yaw = E.headYaw();
             const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
-            const px = rig.position.x, pz = rig.position.z;
             tryMove((fx * -ax[1] + rx * ax[0]) * sp, (fz * -ax[1] + rz * ax[0]) * sp);
-            if (px === rig.position.x && pz === rig.position.z) dbgStuck += dt; else dbgStuck = 0;
-            if (dbgStuck > 1.5) {
-              dbgStuck = 0; const h = E.headB();
-              E.toast(`DEBUG stick ${ax[0].toFixed(2)} ${ax[1].toFixed(2)} | pos ${h.x.toFixed(1)} ${h.y.toFixed(1)} | floor ${E.walkable(h.x, h.y) ? 'Y' : 'N'} | sp ${sp.toFixed(3)}`, false, 8000);
-            }
           }
-        } catch (err) { E.toast('DEBUG error: ' + err.message, false, 8000); }
+        } catch (err) { console.warn(err); }
+      }
+      // 왼손 컨트롤러가 없으면 오른손 스틱 앞뒤로 걷기
+      if (st === 'R' && !hasLeft && Math.abs(ax[1]) > 0.3 && Math.abs(ax[1]) > Math.abs(ax[0])) {
+        const sp = ([0.7, 1.2, 1.8][E.state.settings.speed] || 1.2) * dt;
+        const yaw = E.headYaw();
+        tryMove(-Math.sin(yaw) * -ax[1] * sp, -Math.cos(yaw) * -ax[1] * sp);
       }
       if (st === 'R') {
         const ptr = pointers.find(p => p.src === src);
@@ -638,7 +641,6 @@ async function enterVR() {
     camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
     $('overlay').classList.add('hidden');
     setTimeout(() => { E.setPose(keep.x, keep.y, yaw); E.onEnterVR && E.onEnterVR(); }, 400);
-    setTimeout(() => { const ss = renderer.xr.getSession(); if (!ss) return; const list = [...ss.inputSources].map(x => `${x.handedness}/${x.gamepad ? x.gamepad.axes.length : 'nogp'}`).join(', '); E.toast('DEBUG inputs: ' + (list || 'none'), false, 6000); }, 3000);
     // 헤드셋 위치가 바닥 밖이면 가까운 바닥으로 옮기기
     setTimeout(() => { const h = E.headB(); if (!E.walkable(h.x, h.y)) { const [x, y] = nearestWalkable(keep.x, keep.y); E.setPose(x, y); } }, 1500);
     session.addEventListener('end', () => {
