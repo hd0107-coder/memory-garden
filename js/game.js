@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=23';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=23';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=24';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=24';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -32,7 +32,7 @@ export function startGame(E) {
   let dailyMsg = null;
   if (S.lastDay !== today) {
     const away = Date.now() - (S.lastVisit || Date.now());
-    S.lastDay = today; S.trainCoinsToday = 0; S.coins += 20;
+    S.lastDay = today; S.trainCoinsToday = 0;
     // 오늘의 추천: 최근 7일 동안 덜 한 훈련
     const week = Date.now() - 7 * 864e5;
     const cnt = { flash: 0, shop: 0, garden: 0 };
@@ -41,10 +41,38 @@ export function startGame(E) {
     // 오래 접속하지 않았으면 핀 꽃은 휴면
     if (away > 7 * 864e5) S.slots.forEach(s => { if (s && s.stage === 3) s.dormant = true; });
     S.dailyWish = { type: shuffle(Object.keys(FLOWERS))[0], n: 2 };
-    dailyMsg = '오늘의 꽃 코인 20개를 받았어요';
     log('day', { rec: S.rec });
   }
   if (!S.dailyWish) S.dailyWish = { type: 'tulip', n: 2 };
+  // 출석 보상: 지난번 보상에서 24시간이 지나면 200코인
+  const LOGIN_BONUS = 200;
+  function loginBonus() {
+    const now = Date.now();
+    if (!S.lastBonus) { S.lastBonus = now; return false; }
+    if (now - S.lastBonus < 864e5) return false;
+    S.lastBonus = now; S.coins += LOGIN_BONUS; log('bonus', { n: LOGIN_BONUS });
+    E.save(); E.refreshWatch && E.refreshWatch();
+    return true;
+  }
+  if (loginBonus()) dailyMsg = '출석 보상으로 꽃 코인 200개를 받았어요';
+  // 야외 정원(MR)에서 딴 꽃: 하루에 10송이까지만 팔 수 있어요
+  const WILD_LIMIT = 10;
+  if (!S.wild) S.wild = {};
+  const wildDay = () => { const d = todayStr(); if (S.wildSoldDay !== d) { S.wildSoldDay = d; S.wildSold = 0; } };
+  const wildOf = t => Math.min(S.wild[t] || 0, S.flowers[t] || 0);
+  const wildLeft = () => { wildDay(); return Math.max(0, WILD_LIMIT - (S.wildSold || 0)); };
+  const sellableOf = t => (S.flowers[t] || 0) - wildOf(t) + Math.min(wildOf(t), wildLeft());
+  const sellableTotal = () => { let g = 0, w = 0; Object.keys(FLOWERS).forEach(t => { g += (S.flowers[t] || 0) - wildOf(t); w += wildOf(t); }); return g + Math.min(w, wildLeft()); };
+  // 팔 때는 정원 꽃부터, 그다음 야외 꽃
+  function sellFlower(t, n) {
+    const w0 = wildOf(t), g = (S.flowers[t] || 0) - w0, fromG = Math.min(n, g), fromW = n - fromG;
+    S.flowers[t] = (S.flowers[t] || 0) - n; S.wild[t] = Math.max(0, w0 - fromW);
+    wildDay(); S.wildSold = (S.wildSold || 0) + fromW;
+  }
+  // 바구니 · 선물에 쓸 때는 야외 꽃부터
+  function useFlower(t, n) {
+    S.flowers[t] = Math.max(0, (S.flowers[t] || 0) - n); S.wild[t] = Math.max(0, (S.wild[t] || 0) - n);
+  }
   E.save();
 
   // ---------- 큰 패널 ----------
@@ -295,7 +323,7 @@ export function startGame(E) {
     if (need > 0) {
       it.gone = performance.now(); E.removeTarget(it.hb);
       mr.picked[t] = (mr.picked[t] || 0) + 1;
-      S.flowers[t] = (S.flowers[t] || 0) + 1; E.save();
+      S.flowers[t] = (S.flowers[t] || 0) + 1; S.wild[t] = (S.wild[t] || 0) + 1; E.save();
       E.toast(`${FLOWERS[t].name} +1 · 꽃 창고에 넣었어요`, false, 1500);
       mrHud();
       if (Object.keys(mr.target).every(k => (mr.picked[k] || 0) >= mr.target[k])) { mr.phase = 'done'; setTimeout(mrDone, 900); }
@@ -578,7 +606,7 @@ export function startGame(E) {
   // 7. 완성: 전시 · 선물 · 팔기
   function basketFinish() {
     const st = bStyle(bk.style);
-    Object.entries(st.flowers).forEach(([t, n]) => { S.flowers[t] = Math.max(0, (S.flowers[t] || 0) - n); });
+    Object.entries(st.flowers).forEach(([t, n]) => useFlower(t, n));
     Object.entries(st.use).forEach(([id, n]) => addInv(id, -n));
     const item = { style: st.id, slots: bk.slots.slice(), mode: bk.mode, t: Date.now(), state: 'new', custom: st.id === 'custom' ? JSON.parse(JSON.stringify(st)) : null };
     S.baskets.push(item);
@@ -1997,7 +2025,7 @@ export function startGame(E) {
   // ================= 꽃 시장 =================
   function marketScreen() {
     const want = S.dailyWish, wf = FLOWERS[want.type];
-    const total = flowerCount();
+    const total = sellableTotal();
     const PRICE = FLOWER_PRICE, WISH_PRICE = 25; // 아무 꽃은 15, 정해진 꽃은 25
     open(P => {
       exitBtn(P);
@@ -2008,14 +2036,14 @@ export function startGame(E) {
       // 내 꽃
       P.rect(320, 250, 1280, 150, 30, 'rgba(255,255,255,0.58)');
       P.text('내 꽃', 360, 325, { size: 36, weight: 700, align: 'left' });
-      Object.keys(FLOWERS).forEach((t, k) => { P.icon(FLOWERS[t].icon, 560 + k * 320, 325, 100); P.text(`${FLOWERS[t].name} ${S.flowers[t] || 0}송이`, 620 + k * 320, 327, { size: 34, align: 'left' }); });
+      Object.keys(FLOWERS).forEach((t, k) => { P.icon(FLOWERS[t].icon, 560 + k * 320, 325, 100); P.text(`${FLOWERS[t].name} ${S.flowers[t] || 0}송이`, 620 + k * 320, 312, { size: 34, align: 'left' }); if (wildOf(t)) P.text(`야외 정원 꽃 ${wildOf(t)}송이`, 620 + k * 320, 356, { size: 24, color: C.sub, align: 'left' }); });
       // 오늘의 주문 1: 아무 꽃
       P.rect(320, 430, 1280, 200, 30, 'rgba(255,255,255,0.58)');
       P.text('오늘은 아무 꽃 3송이를 사요', 360, 495, { size: 42, weight: 700, align: 'left' });
       P.text(`한 송이에 ${PRICE}코인 · 꽃 종류는 상관없어요`, 360, 560, { size: 30, color: C.sub, align: 'left' });
       P.button('any', 1270, 490, 290, 90, '3송이 팔기', () => {
         let n = 3;
-        Object.keys(FLOWERS).sort((a, b) => (S.flowers[b] || 0) - (S.flowers[a] || 0)).forEach(t => { const k = Math.min(n, S.flowers[t] || 0); S.flowers[t] -= k; n -= k; });
+        Object.keys(FLOWERS).sort((a, b) => sellableOf(b) - sellableOf(a)).forEach(t => { const k = Math.min(n, sellableOf(t)); if (k > 0) sellFlower(t, k); n -= k; });
         S.coins += 3 * PRICE; log('market', { act: 'any', n: 3 }); E.save(); E.refreshWatch();
         E.toast(`꽃 3송이를 팔았어요. 꽃 코인 +${3 * PRICE}`); marketScreen();
       }, { kind: 'primary', disabled: total < 3, size: 36, voice: ['3송이', '아무 꽃'] });
@@ -2025,11 +2053,12 @@ export function startGame(E) {
       P.text(`오늘은 ${wf.name} ${want.n}송이를 사요`, 480, 725, { size: 42, weight: 700, align: 'left' });
       P.text(`한 송이에 ${WISH_PRICE}코인 · 보관함에서 ${wf.name}를 찾아 팔아요`, 480, 790, { size: 30, color: C.sub, align: 'left' });
       P.button('want', 1270, 720, 290, 90, `${want.n}송이 팔기`, () => {
-        S.flowers[want.type] -= want.n; S.coins += want.n * WISH_PRICE;
+        sellFlower(want.type, want.n); S.coins += want.n * WISH_PRICE;
         log('market', { act: 'wish', type: want.type, n: want.n }); E.save(); E.refreshWatch();
         E.toast(`${wf.name} ${want.n}송이를 팔았어요. 꽃 코인 +${want.n * WISH_PRICE}`); marketScreen();
-      }, { kind: 'primary', disabled: (S.flowers[want.type] || 0) < want.n, size: 36, voice: [wf.name] });
-      P.text(total ? '팔고 싶지 않으면 그냥 두어도 괜찮아요' : '아직 꽃이 없어요. 정원에서 핀 꽃을 잘라 오면 팔 수 있어요', W / 2, 920, { size: 30, color: C.sub });
+      }, { kind: 'primary', disabled: sellableOf(want.type) < want.n, size: 36, voice: [wf.name] });
+      const hasWild = Object.keys(FLOWERS).some(t => wildOf(t));
+      P.text(hasWild ? `야외 정원에서 딴 꽃은 하루에 ${WILD_LIMIT}송이까지 팔 수 있어요 · 오늘 남은 수 ${wildLeft()}송이` : (flowerCount() ? '팔고 싶지 않으면 그냥 두어도 괜찮아요' : '아직 꽃이 없어요. 정원에서 핀 꽃을 잘라 오면 팔 수 있어요'), W / 2, 920, { size: 30, color: hasWild && !wildLeft() ? C.danger : C.sub });
     }, zoneOf('market'), 'market');
     E.say('꽃 시장이에요. 키운 꽃을 팔 수 있어요.');
   }
@@ -2051,7 +2080,7 @@ export function startGame(E) {
         P.text(`“${f.name} ${w.n}송이 받고 싶어요”`, 590, y + 48, { size: 36, weight: 600, align: 'left' });
         P.text(w.done ? '보냈어요. 고맙다는 답장이 왔어요' : `내 ${f.name}: ${S.flowers[w.type] || 0}송이`, 590, y + 98, { size: 28, color: w.done ? C.green : C.sub, align: 'left' });
         P.button('w' + k, 1330, y + 30, 210, 76, w.done ? '완료' : '선물하기', () => {
-          S.flowers[w.type] -= w.n; w.done = true; log('wish', { from: w.from, type: w.type });
+          useFlower(w.type, w.n); w.done = true; log('wish', { from: w.from, type: w.type });
           S.letters.unshift({ from: w.from, text: `${f.name} 정말 고마워요! 받자마자 꽃병에 꽂아 두었어요.` });
           E.save(); E.toast(`${w.from}에게 ${f.name}를 보냈어요`); main.refresh();
         }, { kind: 'primary', disabled: w.done || (S.flowers[w.type] || 0) < w.n, size: 30, voice: [w.from, '선물'] });
@@ -2162,6 +2191,7 @@ export function startGame(E) {
   }
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
+    if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('출석 보상으로 꽃 코인 200개를 받았어요'); }
     if (!E.inMR()) entrancesFrame(now);
     popsFrame(now); mrFrame(now);
     if (tea && current === 'teaChat' && E.listening && now - teaLvT > 150) { teaLvT = now; tea.redraw(); }
@@ -2184,5 +2214,5 @@ export function startGame(E) {
   E.onEnterVR = () => { startPose(); if (mrReturn) { const f = mrReturn; mrReturn = null; setTimeout(f, 300); return; } setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
   startPose();
   E.refreshWatch();
-  window.MG_game = { mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
+  window.MG_game = { _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
 }
