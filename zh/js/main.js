@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=18';
-import { loadState, saveState } from './data.js?v=18';
-import { startGame } from './game.js?v=18';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=19';
+import { loadState, saveState } from './data.js?v=19';
+import { startGame } from './game.js?v=19';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -93,9 +93,27 @@ E.setPose = (bx, by, yaw) => {
   const h = E.headWorld();
   rig.position.x += bx - h.x; rig.position.z += -by - h.z;
 };
+// 가장 가까운 걸을 수 있는 곳 찾기
+function nearestWalkable(bx, by) {
+  for (let r = 0.25; r <= 12; r += 0.25)
+    for (let a = 0; a < Math.PI * 2; a += 0.25 / r) {
+      const x = bx + Math.cos(a) * r, y = by + Math.sin(a) * r;
+      if (E.walkable(x, y)) return [x, y];
+    }
+  return [40.1, -10.5];
+}
+let stuckT = 0;
 function tryMove(dx, dz) {
   const h = E.headWorld();
   const nx = h.x + dx, nz = h.z + dz;
+  // 지금 서 있는 곳이 바닥 밖이면 막지 않고 움직이게 함
+  if (!E.walkable(h.x, -h.z)) {
+    rig.position.x += dx; rig.position.z += dz;
+    stuckT += Math.hypot(dx, dz);
+    if (stuckT > 0.6) { stuckT = 0; const [x, y] = nearestWalkable(h.x, -h.z); E.setPose(x, y); }
+    return;
+  }
+  stuckT = 0;
   if (E.walkable(nx, -nz)) { rig.position.x += dx; rig.position.z += dz; }
   else if (E.walkable(nx, -h.z)) rig.position.x += dx;
   else if (E.walkable(h.x, -nz)) rig.position.z += dz;
@@ -612,6 +630,8 @@ async function enterVR() {
     camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
     $('overlay').classList.add('hidden');
     setTimeout(() => { E.setPose(keep.x, keep.y, yaw); E.onEnterVR && E.onEnterVR(); }, 400);
+    // 헤드셋 위치가 바닥 밖이면 가까운 바닥으로 옮기기
+    setTimeout(() => { const h = E.headB(); if (!E.walkable(h.x, h.y)) { const [x, y] = nearestWalkable(keep.x, keep.y); E.setPose(x, y); } }, 1500);
     session.addEventListener('end', () => {
       camera.position.set(0, 1.55, 0); pitch = 0; camera.rotation.set(0, 0, 0);
       $('overlay').classList.remove('hidden');
