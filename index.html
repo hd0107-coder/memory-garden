@@ -15,6 +15,7 @@
   #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
     background: linear-gradient(180deg, rgba(191,227,247,.92), rgba(251,247,238,.96)); z-index: 10; }
   #overlay.hidden, .hidden { display: none !important; }
+  .lang { float: right; margin: 4px 0 0 12px; padding: 10px 18px; border-radius: 999px; background: #eef4e8; color: #3f5a35; font-weight: 700; font-size: 18px; text-decoration: none; }
   .card { width: min(720px, 100%); background: rgba(255,255,255,.9); border-radius: 32px; padding: 40px 44px; box-shadow: 0 20px 60px rgba(60,80,40,.18); }
   h1 { margin: 0 0 6px; font-size: 44px; } h1 small { font-size: 22px; color: var(--sub); font-weight: 500; margin-left: 8px; }
   p { font-size: 19px; line-height: 1.6; margin: 8px 0; color: #444; }
@@ -47,6 +48,7 @@
 </div>
 <div id="overlay">
   <div class="card">
+    <a id="langLink" class="lang" href="zh/">中文版</a>
     <h1>기억정원 <small>Memory Garden VR</small></h1>
     <p>정원을 가꾸고, 기억 훈련을 하고, 친구들과 티파티를 즐기는 공간이에요.</p>
     <div id="loading">
