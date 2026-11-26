@@ -219,7 +219,8 @@ export class Panel {
     this.hits = [];
     this.view(this);
     // 안내 중일 때 눌러야 할 버튼을 주황색으로 반짝이게
-    const g = this.guideId && this.hits.find(h => h.id === this.guideId);
+    const gid = this.guideId;
+    const g = gid && this.hits.find(h => typeof gid === 'function' ? gid(h) : h.id === gid);
     if (g) {
       const a = 0.6 + 0.4 * Math.sin(performance.now() / 260);
       const pad = 12, r = Math.min(60, g.h / 2 + pad);
@@ -235,8 +236,8 @@ export class Panel {
         const mid = g.y + g.h / 2, cxg = g.x + g.w / 2;
         // 위 · 오른쪽 · 아래 · 왼쪽 중에서 다른 버튼을 가리지 않는 곳
         const cands = [
-          ['up', cxg - tw / 2, g.y - gap - th], ['right', g.x + g.w + gap, mid - th / 2],
-          ['down', cxg - tw / 2, g.y + g.h + gap], ['left', g.x - gap - tw, mid - th / 2]
+          ['right', g.x + g.w + gap, mid - th / 2], ['up', cxg - tw / 2, g.y - gap - th],
+          ['left', g.x - gap - tw, mid - th / 2], ['down', cxg - tw / 2, g.y + g.h + gap]
         ];
         const free = ([, x, y]) => x >= 4 && y >= 4 && x + tw <= this.W - 4 && y + th <= this.H - 4 &&
           !this.hits.some(o => o !== g && x < o.x + o.w && x + tw > o.x && y < o.y + o.h && y + th > o.y);

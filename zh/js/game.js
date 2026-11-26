@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=28';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=28';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=29';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=29';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -120,16 +120,14 @@ export function startGame(E) {
       const items = [
         ['garden', '照料花园', 'ic_flowers', () => guideTo('garden'), ['照料花园', '花园', '种花']],
         ['train', '训练空间', 'anemone', () => trainingArea(), ['训练空间', '训练']],
-        ['market', '花市场', 'ic_market', () => guideTo('market'), ['花市场', '市场']],
-        ['tea', '花园茶话会', 'ic_tea', () => guideTo('tea'), ['花园茶话会', '茶话会', '聚会']],
         ['mail', '信箱', 'ic_mail', () => guideTo('mail'), ['信箱', '信', '心愿']],
         ['quest', '新手指南', 'plant_labels', () => questStart(), ['新手指南', '指南', '最初']],
         ['set', '设置', 'gear', () => settings(), ['设置']]
       ];
       items.forEach((it, i) => {
-        const x = 108 + i * 246, y = 440, w = 232, h = 190;
+        const n = items.length, w = 265, gap = 30, x = 90 + (1740 - (n * w + (n - 1) * gap)) / 2 + i * (w + gap), y = 440, h = 190;
         const isRec = it[0] === 'train' && (S.rec === 'flash' || S.rec === 'shop') || it[0] === 'garden' && S.rec === 'garden';
-        P.button(it[0], x, y, w, h, it[1], it[3], { kind: isRec ? 'primary' : 'secondary', r: 36, size: 34, dy: 52, voice: it[4] });
+        P.button(it[0], x, y, w, h, it[1], it[3], { kind: isRec ? 'primary' : 'secondary', r: 36, size: 38, dy: 52, voice: it[4] });
         const cx = x + w / 2, cy = y + 68;
         if (it[2] === 'gear') drawGlyph(P.ctx, 'gear', cx, cy, 80);
         else P.icon(it[2], cx, cy, 100);
@@ -1052,7 +1050,6 @@ export function startGame(E) {
   const cartCount = () => Object.values(cart).reduce((a, b) => a + b, 0);
   const cartTotal = () => Object.entries(cart).reduce((a, [id, q]) => a + ITEMS[id].price * q, 0);
   function shopBuy() {
-    setTimeout(() => qev('buy'), 2500);
     open(P => {
       exitBtn(P, () => closeAll('离开了记忆花店'));
       P.glass(470, 40, 980, 120, 60);
@@ -1170,6 +1167,7 @@ export function startGame(E) {
           Q.button('more', 560, 760, 390, 100, '再买一些', () => shopBuy(), { voice: ['更多'] });
           Q.button('home', 970, 760, 390, 100, '回花园', () => closeAll('回到花园了'), { kind: 'primary', voice: ['花园'] });
         }, placeOf('shop'), 'cartDone');
+        qev('buy');
         E.say('算对了！');
       }, { kind: 'primary', disabled: !sum, voice: ['结算'] });
     }, placeOf('shop'), 'cartPay');
@@ -1630,6 +1628,7 @@ export function startGame(E) {
     const started = startGrowIfReady(s);
     E.toast(started ? `${f}开始长了！` : left ? `还需要${nd.name}${left}次` : `${nd.name}完成！也看看其他提示吧`, false);
     log('garden', { act: key, type: s.type }); E.save(); updateSlot(i);
+    if (quest) { quest.did = quest.did || {}; quest.did[key] = true; setTimeout(() => qev(key), 600); }
   }
   function fertSlot(i) {
     const s = S.slots[i];
@@ -1655,7 +1654,8 @@ export function startGame(E) {
     if (S.slots[i]) return;
     addInv('seed_' + type, -1);
     S.slots[i] = { type, stage: 0, watered: false, readyAt: 0, fert: false, needs: genNeeds(0) };
-    log('train', { game: 'garden', act: 'plant', type, rec: S.rec === 'garden' }); setTimeout(() => qev('plant'), 1500);
+    log('train', { game: 'garden', act: 'plant', type, rec: S.rec === 'garden' });
+    if (quest) { S.slots[i].needs = { water: 1, fert: 1, sun: 1 }; quest.slot = i; E.save(); updateSlot(i); setTimeout(() => qev('plant'), 1200); }
     E.save(); updateSlot(i);
     E.toast(`种下了${FLOWERS[type].name}！看看花上亮起的提示来照顾它吧`);
     closePopup();
@@ -1779,7 +1779,7 @@ export function startGame(E) {
           const who = need >= 0 ? FLOWERS[S.slots[need].type].name : '花';
           const msg = ITEMS[it.id].kind === 'seed' ? '按住拖到空圆圈上再松开' : `按住，把${ITEMS[it.id].name}放到${who}上`;
           E.toast(msg, true, 8000);
-        }, { voice: [it.id ? ITEMS[it.id].name : ''], drag: true });
+        }, { voice: [it.id ? ITEMS[it.id].name : ''], drag: true, item: it.id });
       });
       if (!list.length) P.text('还是空的', W / 2, 560, { size: 38, color: C.sub });
       P.text('按住想用的东西，拖到花上', W / 2, 900, { size: 30, color: C.sub });
@@ -1857,7 +1857,6 @@ export function startGame(E) {
   let tea = null;
   function teaStop() { E.openMic(false); if (tea) { avatars.forEach(a => a.b.sprite.visible = false); tea = null; } }
   function teaEntry(toastMsg) {
-    setTimeout(() => qev('tea'), 2500);
     open(P => {
       exitBtn(P);
       P.glass(460, 70, 1000, 900, 60);
@@ -2016,6 +2015,7 @@ export function startGame(E) {
     }, zoneOf('tea'), 'teaInvite');
   }
   function teaEnd() {
+    setTimeout(() => qev('tea'), 300);
     const mins = tea ? Math.max(1, Math.round((Date.now() - tea.start) / 60000)) : 0;
     if (tea) log('social', { act: 'end', minutes: mins, turns: tea.myTurns });
     E.save(); teaStop();
@@ -2031,7 +2031,6 @@ export function startGame(E) {
 
   // ================= 꽃 시장 =================
   function marketScreen() {
-    setTimeout(() => qev('market'), 2500);
     const want = S.dailyWish, wf = FLOWERS[want.type];
     const total = sellableTotal();
     const PRICE = FLOWER_PRICE, WISH_PRICE = 25; // 아무 꽃은 15, 정해진 꽃은 25
@@ -2053,7 +2052,7 @@ export function startGame(E) {
         let n = 3;
         Object.keys(FLOWERS).sort((a, b) => sellableOf(b) - sellableOf(a)).forEach(t => { const k = Math.min(n, sellableOf(t)); if (k > 0) sellFlower(t, k); n -= k; });
         S.coins += 3 * PRICE; log('market', { act: 'any', n: 3 }); E.save(); E.refreshWatch();
-        E.toast(`卖了3朵花，花币 +${3 * PRICE}`); marketScreen();
+        E.toast(`卖了3朵花，花币 +${3 * PRICE}`); marketScreen(); qev('market');
       }, { kind: 'primary', disabled: total < 3, size: 36, voice: ['3朵', '任意花'] });
       // 오늘의 주문 2: 정해진 꽃
       P.rect(320, 660, 1280, 200, 30, 'rgba(255,255,255,0.58)');
@@ -2073,7 +2072,6 @@ export function startGame(E) {
 
   // ================= 우편함 =================
   function mailScreen() {
-    setTimeout(() => qev('mail'), 2500);
     open(P => {
       exitBtn(P);
       P.glass(300, 60, 1320, 950, 60);
@@ -2091,7 +2089,7 @@ export function startGame(E) {
         P.button('w' + k, 1330, y + 30, 210, 76, w.done ? '完成' : '送礼物', () => {
           useFlower(w.type, w.n); w.done = true; log('wish', { from: w.from, type: w.type });
           S.letters.unshift({ from: w.from, text: `${f.name}真是谢谢你！一收到就插进花瓶里了。` });
-          E.save(); E.toast(`把${f.name}寄给了${w.from}`); main.refresh();
+          E.save(); E.toast(`把${f.name}寄给了${w.from}`); main.refresh(); qev('mail');
         }, { kind: 'primary', disabled: w.done || (S.flowers[w.type] || 0) < w.n, size: 30, voice: [w.from, '礼物'] });
       });
       const ly = 330 + Math.min(3, S.wishes.length) * 150 + 30;
@@ -2332,31 +2330,81 @@ export function startGame(E) {
   const QUEST = [
     { k: 'flash', title: '试试闪光找花', text: '在训练空间里玩一次“闪光找花”。这是记住刚出现的花在哪里的训练。', btn: '打开训练空间', go: () => trainingArea() },
     { k: 'shopT', title: '试试记忆花店训练', text: '这次试试训练空间里的“记忆花店”。先记住要买的东西，再到花店里挑出来。', btn: '打开训练空间', go: () => trainingArea() },
-    { k: 'plant', title: '种花', text: '去花园点一个空的圆圈，种下一颗种子。看着花上方的图标照顾它，花就会慢慢长大。', btn: '去花园', go: () => guideTo('garden') },
-    { k: 'tea', title: '花园茶话会', text: '去茶话会的座位看看。这里可以和家人朋友自由聊天。', btn: '去茶话会', go: () => guideTo('tea') },
-    { k: 'buy', title: '记忆花店', text: '打开记忆花店看看。这里可以用花币买种子、肥料和做花篮的材料。', btn: '打开记忆花店', go: () => { activeZone = 'shop'; shopBuy(); } },
+    { k: 'plant', title: '种下种子', text: '按花园前面的“保管箱”，拿出种子，按住它放到空的圆圈上种下去。', btn: '去花园', go: () => guideTo('garden') },
+    { k: 'water', title: '浇水', text: '花的上方出现了水滴图标。请从保管箱的“园艺工具”里拿出洒水壶，放到花上。', btn: '打开保管箱', go: () => { activeZone = 'garden'; invTab = 2; inventory(); } },
+    { k: 'fert', title: '施肥', text: '这次是肥料。请从保管箱的“种植用品”里拿出肥料，放到花上。', btn: '打开保管箱', go: () => { activeZone = 'garden'; invTab = 1; inventory(); } },
+    { k: 'sun', title: '晒太阳', text: '太阳图标不需要工具，直接点花上方的太阳图标就行。', btn: '去花园', go: () => guideTo('garden') },
+    { k: 'tea', title: '花园茶话会', text: '到茶话会的座位，按“参加”进入聊天。然后按“结束”就可以了。', btn: '去茶话会', go: () => guideTo('tea') },
+    { k: 'buy', title: '在记忆花店买东西', text: '在记忆花店挑一样东西放进购物车，再用硬币结算。', btn: '打开记忆花店', go: () => { activeZone = 'shop'; shopBuy(); } },
     { k: 'mr', title: '户外花园（MR）', text: '在户外花园里，可以记住花，然后在自己房间的地板上把花摘下来。请在 Quest 头显里试试。', btn: '打开户外花园', go: () => mrInfo() },
-    { k: 'market', title: '花市场', text: '去花市场看看。这里可以卖掉自己种的花，攒花币。', btn: '去花市场', go: () => guideTo('market') },
-    { k: 'mail', title: '信箱', text: '最后打开信箱看看。这里能看到家人和朋友发来的花的心愿和信。', btn: '去信箱', go: () => guideTo('mail') }
+    { k: 'market', title: '在花市场卖花', text: '在花市场卖掉 3 朵花试试，卖多少就能得到多少花币。', btn: '去花市场', go: () => guideTo('market') },
+    { k: 'mail', title: '信箱', text: '最后打开信箱，按家人花的心愿送一束花吧。', btn: '去信箱', go: () => guideTo('mail') }
   ];
+  const NEED_STEPS = ['water', 'fert', 'sun'];
   let quest = null;
   const guideCard = new Panel(1200, 330, 1.0, { renderOrder: 70 });
   E.addPanel(guideCard);
   guideCard.show(false);
+  // 안내 동안 쓸 물건과 꽃 코인을 넉넉히 채워 두고, 끝나면 원래대로 돌려 놓음
+  function questSupply() {
+    S.coins = Math.max(S.coins, 1000);
+    [['seed_tulip', 3], ['seed_daisy', 2], ['seed_sunflower', 2], ['watering_can', 1], ['fertilizer', 3], ['pesticide', 2]].forEach(([id, n]) => { if (inv(id) < n) addInv(id, n - inv(id)); });
+    Object.keys(FLOWERS).forEach(t => { if ((S.flowers[t] || 0) < 4) S.flowers[t] = 4; });
+    S.wild = {};
+    if (S.parties && S.parties[0]) S.parties[0].live = true;
+    if (S.wishes && S.wishes[0]) S.wishes[0].done = false;
+    if (!S.slots.some(q => !q)) S.slots[S.slots.length - 1] = null;
+    E.refreshWatch(); refreshSlots(); S.slots.forEach((_, i) => updateSlot(i));
+  }
   function questStart() {
-    quest = { i: 0 }; S.questStep = 0; E.save();
+    if (!S.qBackup) { const c = { ...S }; delete c.qBackup; S.qBackup = JSON.stringify(c); }
+    quest = { i: 0 }; S.questStep = 0;
+    questSupply(); E.save();
     closeAll();
     questShow(true);
   }
-  function questStop() { quest = null; S.questStep = null; E.save(); guideCard.show(false); E.toast('新手指南已停止，可以在菜单里重新开始'); }
+  function questRestore() {
+    if (!S.qBackup) return;
+    const b = JSON.parse(S.qBackup);
+    Object.keys(S).forEach(k => delete S[k]);
+    Object.assign(S, b);
+    S.tutorialDone = true;
+    E.carry(null); E.beacon(null);
+    E.save(); E.refreshWatch(); refreshSlots(); S.slots.forEach((_, i) => updateSlot(i));
+    if (typeof placeShownBaskets === 'function') placeShownBaskets();
+  }
+  function questStop() {
+    quest = null; guideCard.show(false); questRestore();
+    S.questStep = null; E.save();
+    closeAll(); E.toast('新手指南已停止，物品和花币已恢复成原来的样子');
+  }
+  function questFinish() {
+    quest = null; guideCard.show(false); questRestore();
+    S.questStep = null; S.questDone = true; E.save();
+    const L = [['anemone', '闪光找花'], ['watering_can', '记忆花店训练'], ['ic_flowers', '种花和照顾花'], ['ic_tea', '花园茶话会'], ['seeds', '在记忆花店买东西'], ['poppy', '户外花园（MR）'], ['ic_market', '在花市场卖花'], ['ic_mail', '信箱']];
+    open(P => {
+      P.glass(310, 60, 1300, 960, 60);
+      P.circle(W / 2, 170, 74, C.green); drawGlyph(P.ctx, 'check', W / 2, 170, 92);
+      P.text('新手指南全部完成！', W / 2, 300, { size: 58, weight: 700 });
+      P.text('花园里的地方都逛过了。这些是你做过的事情。', W / 2, 365, { size: 32, color: C.sub });
+      L.forEach((it, k) => { const x = 470 + (k % 4) * 330, y = 470 + Math.floor(k / 4) * 170;
+        P.circle(x, y, 52, '#f8f6ef'); P.icon(it[0], x, y, 80);
+        P.text(it[1], x, y + 82, { size: 28, weight: 700 }); });
+      P.text('指南过程中用掉的花币和物品，都已经恢复成原来的样子了。现在可以在自己的花园里自由玩了。', W / 2, 820, { size: 32, color: C.ink, maxW: 1150 });
+      P.button('go', 610, 890, 700, 105, '开始逛花园', () => closeAll(), { kind: 'primary', size: 40, voice: ['开始', '四处看看'] });
+    }, 'front', 'questEnd');
+    E.say('新手指南全部完成！过程中用掉的花币和物品都已经恢复了。');
+  }
   function questShow(speak) {
     if (!quest) { guideCard.show(false); return; }
     const q = QUEST[quest.i];
+    // 순서와 다르게 이미 해 둔 돌보기는 바로 넘어감
+    if (NEED_STEPS.includes(q.k) && quest.did && quest.did[q.k]) { setTimeout(() => qev(q.k), 300); return; }
     guideCard.setView(P => {
       P.glass(10, 10, 1180, 310, 50, 'rgba(255,255,255,0.55)');
-      P.ctx.fillStyle = C.green; P.ctx.beginPath(); P.ctx.roundRect(40, 34, 250, 54, 27); P.ctx.fill();
-      P.text(`新手指南 ${quest.i + 1} / ${QUEST.length}`, 165, 62, { size: 28, weight: 700, color: '#fff' });
-      P.text(q.title, 320, 62, { size: 44, weight: 700, align: 'left' });
+      P.ctx.fillStyle = C.green; P.ctx.beginPath(); P.ctx.roundRect(40, 34, 270, 54, 27); P.ctx.fill();
+      P.text(`新手指南 ${quest.i + 1} / ${QUEST.length}`, 175, 62, { size: 28, weight: 700, color: '#fff' });
+      P.text(q.title, 340, 62, { size: 44, weight: 700, align: 'left' });
       P.text(q.text, 600, 160, { size: 32, color: C.ink, maxW: 1100 });
       P.button('go', 330, 222, 480, 84, q.btn, () => q.go(), { kind: 'primary', size: 34, voice: [q.btn] });
       P.button('stop', 850, 222, 300, 84, '停止指南', () => questStop(), { size: 30, voice: ['停止指南'] });
@@ -2365,13 +2413,9 @@ export function startGame(E) {
     else if (speak) quest.pendingSay = true;
   }
   function qev(key) {
-    if (!quest || QUEST[quest.i].k !== key) return;
+    if (!quest || !QUEST[quest.i] || QUEST[quest.i].k !== key) return;
     quest.i++; S.questStep = quest.i; E.save();
-    if (quest.i >= QUEST.length) {
-      quest = null; S.questStep = null; S.questDone = true; E.save(); guideCard.show(false);
-      E.toast('新手指南全部完成！现在可以在花园里自由玩了', true, 6000);
-      return;
-    }
+    if (quest.i >= QUEST.length) { guideCard.show(false); setTimeout(questFinish, 1500); return; }
     E.toast('做得好！来看下一步吧。', false, 2500);
     setTimeout(() => questShow(true), 2600);
   }
@@ -2380,7 +2424,7 @@ export function startGame(E) {
   let guideMove = false;
   function guideTarget(out) {
     const h = E.headWorld(), yaw = E.headYaw(), d = E.inXR() ? 1.55 : 1.15;
-    out.set(h.x - Math.sin(yaw) * d, Math.max(0.55, h.y - (E.inXR() ? 0.78 : 0.55)), h.z - Math.cos(yaw) * d);
+    out.set(h.x - Math.sin(yaw) * d, Math.max(0.55, h.y - (E.inXR() ? 0.78 : 0.4)), h.z - Math.cos(yaw) * d);
     return h;
   }
   function placeGuide(now) {
@@ -2389,10 +2433,10 @@ export function startGame(E) {
   }
   function guideFrame(dt) {
     // 큰 화면이 열려 있을 때는 그 화면을 따라 하면 되니까 안내 카드는 잠시 숨김
-    const want = !!quest && !E.inMR() && !main.visible;
+    const want = !!quest && !!QUEST[quest.i] && !E.inMR() && !main.visible;
     if (guideCard.visible !== want) {
       guideCard.show(want);
-      if (want) { placeGuide(true); if (quest.pendingSay) { quest.pendingSay = false; const q = QUEST[quest.i]; E.say(q.title + '. ' + q.text); } }
+      if (want) { placeGuide(true); if (quest.pendingSay && QUEST[quest.i]) { quest.pendingSay = false; const q = QUEST[quest.i]; E.say(q.title + '. ' + q.text); } }
     }
     if (!want) return;
     const h = guideTarget(_gt);
@@ -2409,26 +2453,14 @@ export function startGame(E) {
 
   // 안내 중: 지금 화면에서 눌러야 할 버튼을 알려 주기
   const PRESS = '请按这里';
+  const TOOL = { water: ['watering_can', 2, '请按“园艺工具”这一栏', '按住洒水壶，把它移到花的上方'], fert: ['fertilizer', 1, '请按“种植用品”这一栏', '按住肥料，把它移到花的上方'] };
   function questHint() {
-    if (!quest || !main.visible || E.inMR()) return null;
+    if (!quest || !QUEST[quest.i] || !main.visible || E.inMR()) return null;
     const k = QUEST[quest.i].k, c = current;
     const back = ['home', '请按“回到花园”，然后看下方的指南卡片'];
     const leave = (txt) => ['exit', txt + '看完以后，按左上角的离开按钮。'];
-    const M = {
-      flashResult: back, shopResult: back, teaEnd: back, mrDone: back,
-      flashStart: ['start', '请按“开始”'], flashInstr: ['ok', '看完说明后按“确认”'], flashRun: [null, '记住闪过的花的位置，然后点那里'],
-      shopStart: ['start', '请按“开始”'], shopInstr: ['ok', '看完说明后按“确认”'], shopList: ['done', '记住要买的东西，然后按“都记住了”'],
-      shopPick: ['pay', '选好记住的所有东西，然后按“结算”'], shopPay: ['pay', '把硬币放上去凑够钱，然后按“结算”'],
-      guide: ['walk', '请按“走过去”，然后跟着绿色光柱走'],
-      'garden-choose': [null, '请选一颗想种的种子'], 'garden-confirm': ['yes', '请按“种”'],
-      mr: ['go', '请按“开始 MR”'], mrNo: ['ok', '按“确认”就会进入下一步'],
-      teaEntry: leave('这里是和家人朋友聊天的地方。按“参加”就能加入聊天。'),
-      shopBuy: leave('可以挑选东西放进购物车，然后结算。'),
-      market: leave('可以卖掉自己种的花，换花币。'),
-      mail: leave('可以看家人发来的花的心愿，还可以送花。')
-    };
     if (c === 'menu') {
-      const t = { flash: 'train', shopT: 'train', plant: 'garden', tea: 'tea', market: 'market', mail: 'mail' }[k];
+      const t = { flash: 'train', shopT: 'train', plant: 'garden', water: 'garden', fert: 'garden', sun: 'garden', mail: 'mail' }[k];
       return t ? [t, '请按这个按钮'] : ['close', '请关掉菜单，看下方的指南卡片'];
     }
     if (c === 'training') {
@@ -2436,7 +2468,47 @@ export function startGame(E) {
       if (k === 'shopT') return ['shop', '请按“记忆花店”'];
       return ['exit', '请按离开按钮，然后看下方的指南卡片'];
     }
+    if (c === 'garden-inv') {
+      if (k === 'plant') return invTab !== 0 ? ['tab0', '请按“种子”这一栏'] : [h => h.item && h.item.startsWith('seed_'), '按住种子，把它移到空的圆圈上'];
+      if (TOOL[k]) { const [id, tab, t1, t2] = TOOL[k]; return invTab !== tab ? ['tab' + tab, t1] : [h => h.item === id, t2]; }
+      return ['x', '请按关闭按钮，然后看下方的指南卡片'];
+    }
+    if (c === 'garden-info') {
+      if (k === 'sun') return ['sun', '请按“晒太阳”'];
+      if (TOOL[k]) return ['inv', '请按“打开保管箱”'];
+      return ['close', '请按“关闭”'];
+    }
+    if (c === 'garden-choose') return k === 'plant' ? [h => FLOWERS[h.id] && !h.disabled, '请选想种的花'] : ['x', '请按关闭按钮'];
+    if (c === 'garden-confirm') return ['yes', '请按“种”'];
+    if (c === 'teaEntry' && k === 'tea') return ['join0', '按“参加”进入聊天'];
+    if (c === 'teaChat' && k === 'tea') return ['end', '聊一聊以后，按“结束”'];
+    if (c === 'shopBuy' && k === 'buy') return Object.keys(cart).length ? ['cart', '请按“查看购物车”'] : [h => ITEMS[h.id] && h.id.startsWith('seed_'), '点想买的东西，把它放进购物车'];
+    if (c === 'cartView' && k === 'buy') return ['pay', '请按“结算”'];
+    if (c === 'cartPay' && k === 'buy') return ['pay', '按价钱把硬币一个个放上去，然后按“结算”'];
+    if (c === 'market' && k === 'market') return ['any', '按“卖3朵”试着卖花吧'];
+    if (c === 'mail' && k === 'mail') return [h => /^w\d$/.test(h.id) && !h.disabled, '按“送礼物”把花送出去吧'];
+    const M = {
+      flashResult: back, shopResult: back, teaEnd: back, mrDone: back,
+      cartDone: ['home', '请按“回花园”，然后看下方的指南卡片'],
+      flashStart: ['start', '请按“开始”'], flashInstr: ['ok', '看完说明后按“确认”'], flashRun: [null, '记住闪过的花的位置，然后点那里'],
+      shopStart: ['start', '请按“开始”'], shopInstr: ['ok', '看完说明后按“确认”'], shopList: ['done', '记住要买的东西，然后按“都记住了”'],
+      shopPick: ['pay', '选好记住的所有东西，然后按“结算”'], shopPay: ['pay', '把硬币放上去凑够钱，然后按“结算”'],
+      guide: ['walk', '请按“走过去”，然后跟着绿色光柱走'],
+      mr: ['go', '请按“开始 MR”'], mrNo: ['ok', '按“确认”就会进入下一步'],
+      questEnd: ['go', '请按“开始逛花园”'],
+      teaEntry: leave('这里是和家人朋友聊天的地方。'), shopBuy: leave('可以挑选东西放进购物车，然后结算。'),
+      market: leave('可以卖掉自己种的花，换花币。'), mail: leave('可以看家人发来的花的心愿，还可以送花。')
+    };
     return M[c] || null;
+  }
+  // 안내 문장은 큰 화면 위쪽 바깥에 붙여서 버튼을 가리지 않게
+  const hintBar = new Panel(1700, 150, 1.9 * 1700 / W, { renderOrder: 75 });
+  main.mesh.add(hintBar.mesh); hintBar.mesh.position.set(0, 1.9 * H / W / 2 + 0.1, 0.01);
+  hintBar.show(false);
+  function setHintBar(txt) {
+    if (!txt) { hintBar.show(false); return; }
+    hintBar.setView(P => { P.glass(6, 6, P.W - 12, P.H - 12, 70, 'rgba(255,248,232,0.96)'); P.ctx.strokeStyle = '#f08c1e'; P.ctx.lineWidth = 6; P.ctx.beginPath(); P.ctx.roundRect(6, 6, P.W - 12, P.H - 12, 70); P.ctx.stroke(); P.text(txt, P.W / 2, P.H / 2 + 2, { size: 46, weight: 700, maxW: P.W - 80 }); });
+    hintBar.show(true);
   }
   let qhKey = '', qhT = 0;
   function questHintFrame(now) {
@@ -2446,13 +2518,85 @@ export function startGame(E) {
       qhKey = key;
       main.guideId = h ? h[0] : null; main.guideText = h && h[0] ? PRESS : '';
       main.refresh();
-      if (h) { if (h[0]) E.toast(h[1], false, 5000); E.say(h[1]); }
+      setHintBar(h && h[0] ? h[1] : ''); if (h) E.say(h[1]);
     }
-    if (main.guideId && now - qhT > 120) { qhT = now; main.refresh(); }
+    if (hintBar.visible) hintBar.draw();
+    if ((main.guideId || gardenBar.guideId) && now - qhT > 120) { qhT = now; if (main.guideId) main.refresh(); if (gardenBar.guideId) gardenBar.refresh(); }
+    // 정원: 보관함 버튼 · 빈 자리 · 꽃 위 표시를 직접 가리키기
+    const k = quest && QUEST[quest.i] ? QUEST[quest.i].k : null;
+    const gStep = k === 'plant' || k === 'water' || k === 'fert';
+    const gb = gStep && !main.visible && !E.carrying && !E.inMR() ? 'inv' : null;
+    if (gardenBar.guideId !== gb) { gardenBar.guideId = gb; gardenBar.guideText = gb ? PRESS : ''; gardenBar.refresh(); }
+    let tgt = null, txt = '';
+    if (quest && !main.visible && !E.inMR()) {
+      const c = E.carrying && E.carrying.id;
+      if (k === 'plant' && c && c.startsWith('seed_')) { const i = S.slots.findIndex(q => !q); if (i >= 0) { tgt = slotObjs[i].root; txt = '放在这里'; } }
+      if ((k === 'water' && c === 'watering_can') || (k === 'fert' && c === 'fertilizer') || k === 'sun') {
+        const i = quest.slot != null ? quest.slot : S.slots.findIndex(q => q && q.needs && q.needs[k]);
+        if (i >= 0 && slotObjs[i]) { tgt = slotObjs[i].status.sprite; txt = k === 'sun' ? '请按这里' : '放在这里'; }
+      }
+    }
+    markFrame(tgt, txt, now);
   }
+  // 3D 안내 표시 (주황 고리 + 말풍선)
+  const mark = new THREE.Group();
+  const markRing = new THREE.Mesh(new THREE.RingGeometry(0.17, 0.24, 40), new THREE.MeshBasicMaterial({ color: 0xf08c1e, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+  markRing.renderOrder = 90; mark.add(markRing);
+  const markTag = new Bubble(560, 150, 0.5); markTag.sprite.renderOrder = 91; markTag.sprite.position.y = 0.36; mark.add(markTag.sprite);
+  mark.visible = false; E.scene.add(mark);
+  let markTxt = '';
+  const _mp = new THREE.Vector3(), _mc = new THREE.Vector3();
+  function markFrame(obj, txt, now) {
+    mark.visible = !!obj;
+    if (!obj) return;
+    obj.getWorldPosition(_mp); mark.position.copy(_mp);
+    const flat = !obj.isSprite;
+    if (flat) { markRing.rotation.set(-Math.PI / 2, 0, 0); mark.position.y += 0.03; }
+    else { E.camera.getWorldPosition(_mc); markRing.lookAt(_mc); }
+    const sc = 1 + 0.12 * Math.sin(now / 220); markRing.scale.setScalar(sc);
+    markRing.material.opacity = 0.65 + 0.35 * Math.sin(now / 220);
+    if (txt !== markTxt) {
+      markTxt = txt;
+      markTag.paint((ctx, b) => {
+        ctx.fillStyle = '#f08c1e'; ctx.beginPath(); ctx.roundRect(10, 10, b.W - 20, b.H - 50, 50); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(b.W / 2 - 22, b.H - 41); ctx.lineTo(b.W / 2 + 22, b.H - 41); ctx.lineTo(b.W / 2, b.H - 8); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = `700 52px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, b.W / 2, (b.H - 40) / 2 + 8);
+      });
+    }
+    markTag.sprite.position.y = (flat ? 0.36 : 0.3) + 0.03 * Math.sin(now / 300);
+  }
+  // 초록 빛기둥이 안 보이면 어느 쪽인지 알려 주기
+  const dirTag = new Bubble(1000, 170, 1.0); dirTag.sprite.renderOrder = 92; dirTag.sprite.visible = false; E.scene.add(dirTag.sprite);
+  let dirSide = 0, dirSaid = null;
+  function dirFrame() {
+    const bp = E.beaconPos && E.beaconPos();
+    if (!bp || main.visible || E.inMR()) { dirTag.sprite.visible = false; dirSide = 0; if (!bp) dirSaid = null; return; }
+    const h = E.headWorld(), yaw = E.headYaw();
+    const want = Math.atan2(-(bp.x - h.x), -(bp.z - h.z));
+    let d = want - yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+    const side = Math.abs(d) < 0.55 ? 0 : (d > 0 ? -1 : 1);
+    if (!side) { dirTag.sprite.visible = false; if (dirSide) E.toast('看到绿色光柱了，往那边走吧', true, 3000); dirSide = 0; return; }
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    dirTag.sprite.position.set(h.x + fx * 1.4, h.y - 0.15, h.z + fz * 1.4);
+    dirTag.sprite.visible = true;
+    if (side !== dirSide) {
+      dirSide = side;
+      const left = side < 0;
+      dirTag.paint((ctx, b) => {
+        ctx.fillStyle = '#f5c542'; ctx.beginPath(); ctx.roundRect(10, 10, b.W - 20, b.H - 20, 75); ctx.fill();
+        ctx.fillStyle = '#3d3410';
+        const ax = left ? 80 : b.W - 80;
+        ctx.beginPath(); ctx.moveTo(ax + (left ? -40 : 40), b.H / 2); ctx.lineTo(ax + (left ? 25 : -25), b.H / 2 - 45); ctx.lineTo(ax + (left ? 25 : -25), b.H / 2 + 45); ctx.fill();
+        ctx.font = `700 50px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(left ? '绿色光柱在左边' : '绿色光柱在右边', b.W / 2 + (left ? 40 : -40), b.H / 2 + 3);
+      });
+      if (dirSaid !== side) { dirSaid = side; E.say(left ? '把头转向左边，找一找绿色光柱' : '把头转向右边，找一找绿色光柱'); }
+    }
+  }
+
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
-    followFrame(dt); tutFrame(); guideFrame(dt); questHintFrame(now);
+    followFrame(dt); tutFrame(); guideFrame(dt); questHintFrame(now); dirFrame();
     if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('签到奖励：获得 200 花币'); }
     // 눈앞에 큰 화면이 열려 있으면 정원 보관함 버튼은 잠시 숨김
     const gbOn = !E.inMR() && (!main.visible || activeZone === 'garden');
@@ -2481,5 +2625,5 @@ export function startGame(E) {
   E.onEnterVR = () => { startPose(); if (mrReturn) { const f = mrReturn; mrReturn = null; setTimeout(f, 300); return; } setTimeout(() => { if (!S.tutorialDone) tutorial(0); else { mainMenu(); if (quest) questShow(true); } if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
   startPose();
   E.refreshWatch();
-  window.MG_game = { questStart, _quest: () => quest, qev: k => qev(k), tutorial, _tut: () => tut, trainingArea, flashStart, shopStart, _cur: () => current, _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
+  window.MG_game = { questFinish, questStop, _S: () => S, questStart, _quest: () => quest, qev: k => qev(k), tutorial, _tut: () => tut, trainingArea, flashStart, shopStart, _cur: () => current, _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
 }

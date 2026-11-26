@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=28';
-import { loadState, saveState } from './data.js?v=28';
-import { startGame } from './game.js?v=28';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=29';
+import { loadState, saveState } from './data.js?v=29';
+import { startGame } from './game.js?v=29';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -173,7 +173,7 @@ const beacon = new THREE.Group();
   col.position.y = 1.3; beacon.add(col);
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6b9a5b, transparent: true, opacity: 0.9, depthWrite: false }));
   ring.position.y = FLOOR_Y + 0.01; beacon.add(ring);
-  beacon.userData.label = new Bubble(700, 150, 1.0);
+  beacon.userData.label = new Bubble(1100, 190, 1.5);
   beacon.userData.label.sprite.position.y = 2.9; beacon.add(beacon.userData.label.sprite);
   beacon.visible = false; scene.add(beacon); UI_OBJS.add(beacon);
 }
@@ -183,12 +183,15 @@ E.beacon = zone => {
   beacon.visible = !!zone;
   if (!zone) return;
   beacon.position.copy(B(zone.stand[0], zone.stand[1], 0));
+  // 노란 이름표: 어디로 가는지 크게
   beacon.userData.label.paint((ctx, b) => {
-    ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.beginPath(); ctx.roundRect(8, 8, b.W - 16, b.H - 16, 60); ctx.fill();
-    ctx.fillStyle = C.ink; ctx.font = `700 64px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(zone.name, b.W / 2, b.H / 2 + 4);
+    ctx.fillStyle = '#f5c542'; ctx.beginPath(); ctx.roundRect(8, 8, b.W - 16, b.H - 46, 60); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(b.W / 2 - 26, b.H - 39); ctx.lineTo(b.W / 2 + 26, b.H - 39); ctx.lineTo(b.W / 2, b.H - 4); ctx.fill();
+    ctx.fillStyle = '#3d3410'; ctx.font = `700 60px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(zone.name + ' · 이쪽으로 오세요', b.W / 2, (b.H - 38) / 2 + 6);
   });
 };
+E.beaconPos = () => beacon.visible ? beacon.position : null;
 
 // ---------- 손목 시계 패널 (왼손) ----------
 const watch = new Panel(640, 300, 0.15, { renderOrder: 80, depthTest: true });
