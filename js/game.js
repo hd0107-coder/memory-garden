@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=32';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=32';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=33';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=33';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -2345,7 +2345,7 @@ export function startGame(E) {
   ];
   const NEED_STEPS = ['water', 'fert', 'sun'];
   let quest = null;
-  E.toastDy = () => guideCard && guideCard.visible ? -0.1 : -0.42;
+  E.toastDy = () => guideCard && guideCard.visible ? 0.22 : -0.42;
   const _tu = new THREE.Vector3(), _tn = new THREE.Vector3();
   E.toastPlace = t => {
     if (!main.visible || E.inMR()) return false;
@@ -2354,7 +2354,11 @@ export function startGame(E) {
     t.mesh.quaternion.copy(main.mesh.quaternion);
     return true;
   };
-  E.onGuideButton = () => { if (quest && QUEST[quest.i]) { closeAll(); quest.cardOn = true; quest.cardSeen = false; questShow(true); } else questStart(); };
+  E.onGuideButton = () => {
+    if (!(quest && QUEST[quest.i])) { questStart(); return; }
+    if (main.visible) { main.show(false); current = null; tilesHide(); }
+    questShow(true);
+  };
   const guideCard = new Panel(1200, 330, 1.0, { renderOrder: 70 });
   E.addPanel(guideCard);
   guideCard.show(false);
@@ -2438,8 +2442,9 @@ export function startGame(E) {
   const _gp = new THREE.Vector3(), _gt = new THREE.Vector3();
   let guideMove = false;
   function guideTarget(out) {
-    const h = E.headWorld(), yaw = E.headYaw(), d = E.inXR() ? 1.55 : 1.15;
-    out.set(h.x - Math.sin(yaw) * d, Math.max(0.5, h.y - (E.inXR() ? 0.98 : 0.4)), h.z - Math.cos(yaw) * d);
+    const h = E.headWorld(), yaw = E.headYaw(), d = E.inXR() ? 1.5 : 1.1;
+    // 눈앞 가운데 (아래쪽 버튼 줄에 가리지 않게)
+    out.set(h.x - Math.sin(yaw) * d, Math.max(0.9, h.y - (E.inXR() ? 0.12 : 0.05)), h.z - Math.cos(yaw) * d);
     return h;
   }
   function placeGuide(now) {
@@ -2457,16 +2462,6 @@ export function startGame(E) {
       if (want) { placeGuide(true); if (quest.pendingSay && QUEST[quest.i]) { quest.pendingSay = false; const q = QUEST[quest.i]; E.say(q.title + '. ' + q.text); } }
     }
     if (!want) return;
-    const h = guideTarget(_gt);
-    _gp.copy(guideCard.mesh.position);
-    const a1 = Math.atan2(_gp.x - h.x, _gp.z - h.z), a2 = Math.atan2(_gt.x - h.x, _gt.z - h.z);
-    let da = Math.abs(a1 - a2) % (Math.PI * 2); if (da > Math.PI) da = Math.PI * 2 - da;
-    if (da > 0.5 || _gp.distanceTo(_gt) > 0.9) guideMove = true;
-    if (guideMove) {
-      const k = 1 - Math.exp(-(dt || 0.016) * 3.5);
-      guideCard.mesh.position.lerp(_gt, k); guideCard.mesh.lookAt(h.x, h.y, h.z);
-      if (guideCard.mesh.position.distanceTo(_gt) < 0.03) guideMove = false;
-    }
   }
 
   // 안내 중: 지금 화면에서 눌러야 할 버튼을 알려 주기

@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=32';
-import { loadState, saveState } from './data.js?v=32';
-import { startGame } from './game.js?v=32';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=33';
+import { loadState, saveState } from './data.js?v=33';
+import { startGame } from './game.js?v=33';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
