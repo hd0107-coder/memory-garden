@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=31';
-import { loadState, saveState } from './data.js?v=31';
-import { startGame } from './game.js?v=31';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=32';
+import { loadState, saveState } from './data.js?v=32';
+import { startGame } from './game.js?v=32';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -146,7 +146,8 @@ E.addPanel(toast); toast.show(false);
 let toastT = 0;
 E.toast = (msg, speak = true, dur = 3800) => {
   toast.setView(P => { P.glass(10, 10, P.W - 20, P.H - 20, 64, 'rgba(255,255,255,0.9)'); P.text(msg, P.W / 2, P.H / 2 + 2, { size: 50, weight: 700, maxW: P.W - 90 }); });
-  E.placeInFront(toast, 1.6, E.toastDy ? E.toastDy() : -0.42);
+  // 큰 화면이 열려 있으면 그 위쪽 바깥에, 아니면 눈앞 아래쪽에
+  if (!(E.toastPlace && E.toastPlace(toast))) E.placeInFront(toast, 1.6, E.toastDy ? E.toastDy() : -0.42);
   toast.show(true); toastT = performance.now() + dur;
   if (speak) E.say(msg);
   $('toast').textContent = msg; $('toast').style.opacity = 1;

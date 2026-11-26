@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=31';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=31';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=32';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=32';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -82,11 +82,15 @@ export function startGame(E) {
   let activeZone = null;  // 지금 하고 있는 활동 구역
   const back = [];
 
+  const FOLLOW_Z = ['market', 'shop', 'tea', 'mail', 'garden'];
   function open(view, place = 'front', name = '') {
     if (!/^basket(Make|Done)/.test(name) && typeof b3Hide === 'function') b3Hide();
+    // 같은 화면을 다시 그리거나 고개를 따라오는 화면이면 자리를 옮기지 않음 (화면이 튀지 않게)
+    const keep = main.visible && (name === current || FOLLOW_Z.includes(activeZone) || current === 'tut');
     current = name;
     main.setView(view);
-    if (place === 'front') E.placeInFront(main);
+    if (keep) { }
+    else if (place === 'front') E.placeInFront(main);
     else if (place && place.panel) E.placeAt(main, B(...place.panel), B(place.stand[0], place.stand[1], 1.5));
     main.show(true);
     tilesHide();
@@ -2342,6 +2346,14 @@ export function startGame(E) {
   const NEED_STEPS = ['water', 'fert', 'sun'];
   let quest = null;
   E.toastDy = () => guideCard && guideCard.visible ? -0.1 : -0.42;
+  const _tu = new THREE.Vector3(), _tn = new THREE.Vector3();
+  E.toastPlace = t => {
+    if (!main.visible || E.inMR()) return false;
+    _tu.set(0, 1, 0).applyQuaternion(main.mesh.quaternion); _tn.set(0, 0, 1).applyQuaternion(main.mesh.quaternion);
+    t.mesh.position.copy(main.mesh.position).addScaledVector(_tu, 1.9 * H / W / 2 + (hintBar.visible ? 0.3 : 0.12)).addScaledVector(_tn, 0.03);
+    t.mesh.quaternion.copy(main.mesh.quaternion);
+    return true;
+  };
   E.onGuideButton = () => { if (quest && QUEST[quest.i]) { closeAll(); quest.cardOn = true; quest.cardSeen = false; questShow(true); } else questStart(); };
   const guideCard = new Panel(1200, 330, 1.0, { renderOrder: 70 });
   E.addPanel(guideCard);
