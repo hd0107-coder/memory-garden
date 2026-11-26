@@ -337,9 +337,12 @@ export function wrap(ctx, str, maxW) {
   str.split('\n').forEach(par => {
     let line = '';
     // 한국어는 글자 단위로도 줄바꿈 가능
-    const words = par.split(/(\s+)/);
+    // 중국어 · 일본어 한자는 한 글자씩 끊어서 줄바꿈
+    const words = par.match(/[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef“”‘’]|[^\s\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef“”‘’]+|\s+/g) || [];
     for (const w of words) {
       const t = line + w;
+      // 쉼표 · 마침표는 줄 맨 앞에 오지 않게 앞줄에 붙임
+      if (/^[，。、！？：；）」』”’,.!?:;)]$/.test(w)) { line = t; continue; }
       if (ctx.measureText(t).width > maxW && line.trim()) {
         out.push(line.trim()); line = w.trimStart();
         while (ctx.measureText(line).width > maxW) {

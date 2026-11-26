@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=25';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=25';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=26';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=26';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -115,6 +115,7 @@ export function startGame(E) {
       P.glass(470, 40, 980, 120, 60);
       P.text(msg, W / 2, 101, { size: 48, weight: 700 });
       P.roundBtn('close', W - 90, 92, 46, 'close', () => closeAll(), ['닫기']);
+      P.button('help', 1480, 48, 300, 96, '사용 방법', () => tutorial(0), { size: 34, voice: ['사용 방법', '도움말', '설명'] });
       P.glass(90, 380, 1740, 300, 60, 'rgba(255,255,255,0.35)');
       const items = [
         ['garden', '정원 가꾸기', 'ic_flowers', () => guideTo('garden'), ['정원 가꾸기', '정원', '꽃 심기']],
@@ -1432,8 +1433,8 @@ export function startGame(E) {
     const plus = new Bubble(128, 128, 0.09); plus.paint(ctx => { ctx.strokeStyle = '#fff'; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(64, 24); ctx.lineTo(64, 104); ctx.moveTo(24, 64); ctx.lineTo(104, 64); ctx.stroke(); });
     plus.sprite.position.y = 0.1; root.add(plus.sprite);
     const plant = new THREE.Group(); root.add(plant);
-    const status = new Bubble(560, 150, 0.46); root.add(status.sprite);
-    const statusHit = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
+    const status = new Bubble(560, 150, 1.0); root.add(status.sprite);
+    const statusHit = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
     root.add(statusHit);
     statusHit.userData.onSelect = carried => { if (carried) return slotSelect(i, carried); const q = S.slots[i]; if (q && q.needs && q.needs.sun) return applyNeed(i, 'sun'); slotSelect(i); };
     E.addTarget(statusHit);
@@ -1544,7 +1545,7 @@ export function startGame(E) {
       const show = s.dormant || s.stage >= 3 || needCount(s) > 0; // 필요할 때만 표시
       o.status.sprite.visible = show; o.statusHit.visible = show;
       const h = stageModels[stageKey(s)].userData.height * (stageKey(s) === 'seedling' ? 1.5 : 1.15);
-      o.status.sprite.position.y = h + 0.24; o.statusHit.position.y = h + 0.24;
+      o.status.sprite.position.y = h + 0.4; o.statusHit.position.y = h + 0.4;
       o.hitbox.scale.y = Math.max(0.12, h * 0.9); o.hitbox.position.y = o.hitbox.scale.y / 2;
       const sig = [s.dormant, s.stage, JSON.stringify(s.needs), s.readyAt ? Math.round((1 - remain(s) / (s.dur || 1)) * 40) : -1].join();
       if (o.sig !== sig) { o.sig = sig; paintStatus(o.status, s); }
@@ -1584,7 +1585,7 @@ export function startGame(E) {
   const pops = [];
   function popPlus(i, txt = '+1') {
     const o = slotObjs[i]; if (!o) return;
-    const bb = new Bubble(160, 100, 0.13);
+    const bb = new Bubble(160, 100, 0.22);
     bb.paint(c => { c.fillStyle = C.green; c.beginPath(); c.roundRect(10, 10, 140, 80, 40); c.fill(); c.fillStyle = '#fff'; c.font = `700 52px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, 80, 52); });
     bb.sprite.position.copy(o.status.sprite.position).add(new THREE.Vector3(0.1, 0.05, 0));
     o.root.add(bb.sprite); pops.push({ bb, o, t0: performance.now() });
@@ -1782,7 +1783,7 @@ export function startGame(E) {
     }, activeZone === 'garden' ? gardenPlace() : 'front', 'garden-inv');
   }
   // 화단 앞 보관함 버튼
-  const gardenBar = new Panel(1000, 260, 0.8, { renderOrder: 60 });
+  const gardenBar = new Panel(1000, 260, 1.1, { renderOrder: 60 });
   E.addPanel(gardenBar);
   E.placeAt(gardenBar, B(40.1, -6.95, 0.62), B(40.1, -7.8, 1.2));
   gardenBar.mesh.rotation.x = 0;
@@ -2143,7 +2144,7 @@ export function startGame(E) {
     const CW = 300, CH = 380;
     const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH;
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42 * CH / CW), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.68 * CH / CW), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
     mesh.renderOrder = 12;
     UI_OBJS.add(mesh);
     const base = B(...en.pos);
@@ -2191,8 +2192,135 @@ export function startGame(E) {
       if (d > 3) o.near = false;
     });
   }
+
+  // ================= 새로 온 분을 위한 사용 방법 =================
+  const TUT = ['hello', 'walk', 'turn', 'menu', 'voice', 'places', 'care', 'end'];
+  let tut = null;
+  function drawController(ctx, cx, cy, side, hl, sc = 1) {
+    const sg = side === 'L' ? 1 : -1;
+    const glow = (x, y, r) => { ctx.save(); ctx.shadowColor = C.green; ctx.shadowBlur = 34; ctx.fillStyle = C.green; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore(); };
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(sc * sg, sc);
+    ctx.fillStyle = '#f6f6f3'; ctx.strokeStyle = '#c3c9bd'; ctx.lineWidth = 5;
+    // 손잡이
+    ctx.beginPath(); ctx.moveTo(-48, 40); ctx.bezierCurveTo(-52, 140, -40, 235, 0, 240); ctx.bezierCurveTo(42, 238, 52, 140, 52, 40); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // 윗부분
+    ctx.beginPath(); ctx.ellipse(0, 0, 110, 82, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // 스틱
+    if (hl === 'stick') glow(-38, -8, 44);
+    ctx.fillStyle = hl === 'stick' ? '#fff' : '#dde1d8'; ctx.beginPath(); ctx.arc(-38, -8, 32, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8f988a'; ctx.beginPath(); ctx.arc(-38, -8, 15, 0, Math.PI * 2); ctx.fill();
+    // 버튼
+    const btn = (x, y, on, label) => {
+      if (on) glow(x, y, 32);
+      ctx.fillStyle = on ? '#fff' : '#dde1d8'; ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.translate(x, y); ctx.scale(sg, 1); ctx.fillStyle = on ? C.greenDark : '#7c8576'; ctx.font = `700 24px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, 0, 1); ctx.restore();
+    };
+    btn(42, 28, hl === 'x', side === 'L' ? 'X' : 'A');
+    btn(62, -30, hl === 'b', side === 'L' ? 'Y' : 'B');
+    if (hl === 'trigger') glow(-30, 78, 26);
+    if (hl === 'grip') glow(44, 150, 26);
+    ctx.restore();
+    // 설명 이름표 (거울처럼 뒤집히지 않게 밖에서 그림)
+    const spot = { stick: [-38, -8], x: [42, 28], trigger: [-30, 78], grip: [44, 150] }[hl];
+    const name = { stick: '스틱', x: 'X 버튼', trigger: '방아쇠', grip: '쥐기 버튼' }[hl];
+    if (spot) {
+      const px = cx + sg * sc * spot[0], py = cy + sc * spot[1], dir = (px >= cx ? 1 : -1);
+      const lx = cx + dir * sc * 200;
+      ctx.strokeStyle = C.green; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(lx, py); ctx.stroke();
+      ctx.font = `700 34px ${FONT}`; const tw = ctx.measureText(name).width + 40;
+      const bx = dir > 0 ? lx : lx - tw;
+      ctx.fillStyle = C.green; ctx.beginPath(); ctx.roundRect(bx, py - 28, tw, 56, 28); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(name, bx + tw / 2, py + 1);
+    }
+  }
+  function drawNeed(ctx, k, cx, cy, r = 44) {
+    const nd = NEED[k];
+    ctx.fillStyle = nd.bg; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 5; ctx.stroke();
+    if (nd.icon) { ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.73, 0, Math.PI * 2); ctx.fill(); drawIcon(ctx, nd.icon, cx, cy, r * 1.2); }
+    else { ctx.save(); if (nd.glyph === 'water') ctx.filter = 'brightness(10)'; drawGlyph(ctx, nd.glyph, cx, cy, r * 1.1); ctx.restore(); }
+  }
+  function tutorial(step) {
+    const key = TUT[step];
+    const h = E.headWorld();
+    tut = { step, key, done: false, x0: h.x, z0: h.z, yaw0: E.headYaw() };
+    const vr = E.inXR();
+    const T = {
+      hello: ['기억정원에 오신 것을 환영해요', vr ? '천천히 하나씩 배워 볼게요. 손에 든 컨트롤러로 화면의 버튼을 가리키고, 검지 쪽 방아쇠를 당기면 눌러져요. “다음” 버튼을 눌러 보세요.' : '천천히 하나씩 배워 볼게요. 화면의 버튼은 마우스로 누르면 돼요. “다음” 버튼을 눌러 보세요.', 'trigger', 'R'],
+      walk: ['걸어 보기', vr ? '왼손 스틱을 앞으로 살짝 밀어 보세요. 미는 방향으로 천천히 걸어가요.' : 'W 키를 누르면 앞으로 걸어가요. A, S, D 키로 다른 방향으로도 걸을 수 있어요.', 'stick', 'L'],
+      turn: ['둘러보기', vr ? '오른손 스틱을 왼쪽이나 오른쪽으로 밀면 몸이 돌아가요. 고개를 돌려서 둘러봐도 돼요.' : 'Q, E 키를 누르거나 마우스를 끌면 몸을 돌려 둘러볼 수 있어요.', 'stick', 'R'],
+      menu: ['메뉴 열기', vr ? '왼손의 X 버튼을 눌러 보세요. 메뉴가 열려요. 화면을 닫고 싶을 때는 B나 Y 버튼을 누르면 돼요.' : 'M 키를 누르면 메뉴가 열리고 닫혀요. 지금 M 키를 눌러 보세요.', 'x', 'L'],
+      voice: ['말로 고르기', vr ? '손잡이 옆의 쥐기 버튼을 누른 채로 말하면, 말로도 고를 수 있어요. 예를 들어 “훈련 공간”이라고 말해 보세요.' : 'V 키를 누른 채로 말하면, 말로도 고를 수 있어요. 예를 들어 “훈련 공간”이라고 말해 보세요.', 'grip', 'R'],
+      places: ['정원 안의 장소', '떠 있는 아이콘을 누르거나 메뉴에서 고르면, 초록 빛기둥이 길을 알려 줘요. 빛기둥을 따라 걸어가면 돼요.'],
+      care: ['꽃 돌보기', '꽃 위에 아이콘이 뜨면 꽃이 그것을 필요로 한다는 뜻이에요. 보관함에서 도구를 꺼내 꽃 위로 가져다 놓아 주세요. 햇빛 아이콘은 그냥 누르면 돼요.'],
+      end: ['준비가 끝났어요!', '이제 정원을 자유롭게 둘러보세요. 모르는 것이 있으면 메뉴의 “사용 방법”을 다시 눌러 보세요.']
+    }[key];
+    open(P => {
+      P.glass(260, 70, 1400, 940, 60);
+      // 진행 표시
+      TUT.forEach((_, k) => { P.ctx.fillStyle = k === step ? C.green : k < step ? 'rgba(94,138,80,0.45)' : 'rgba(255,255,255,0.8)'; P.ctx.beginPath(); P.ctx.arc(W / 2 + (k - (TUT.length - 1) / 2) * 44, 130, k === step ? 13 : 10, 0, Math.PI * 2); P.ctx.fill(); });
+      P.text(`${step + 1} / ${TUT.length}`, 1560, 132, { size: 28, color: C.sub, align: 'right' });
+      P.text(T[0], W / 2, 220, { size: 60, weight: 700 });
+      if (key === 'places') {
+        const L = [['ic_flowers', '정원 가꾸기', '꽃을 심고 키워요'], ['anemone', '훈련 공간', '기억 훈련을 해요'], ['ic_market', '꽃 시장', '키운 꽃을 팔아요'], ['watering_can', '기억 꽃집', '씨앗과 도구를 사요'], ['ic_tea', '정원 티파티', '가족과 이야기해요'], ['poppy', '야외 정원', '내 방에서 꽃 따기']];
+        L.forEach((it, k) => { const x = 560 + (k % 3) * 450, y = 360 + Math.floor(k / 3) * 220;
+          P.circle(x - 130, y, 70, '#f8f6ef'); P.icon(it[0], x - 130, y, 110);
+          P.text(it[1], x - 40, y - 24, { size: 38, weight: 700, align: 'left' }); P.text(it[2], x - 40, y + 30, { size: 30, color: C.sub, align: 'left' }); });
+        P.text(T[1], W / 2, 770, { size: 36, color: C.ink, maxW: 1240 });
+      } else if (key === 'care') {
+        ['water', 'fert', 'pest', 'sun'].forEach((k, j) => { const x = W / 2 + (j - 1.5) * 260; drawNeed(P.ctx, k, x, 380, 70); P.text(NEED[k].name, x, 500, { size: 36, weight: 700 }); });
+        P.text(T[1], W / 2, 660, { size: 40, color: C.ink, maxW: 1240 });
+      } else if (key === 'hello' || key === 'end') {
+        const ix = vr && key === 'hello' ? W / 2 - 260 : W / 2;
+        P.circle(ix, 410, 120, '#f8f6ef'); P.icon(key === 'end' ? 'ic_flowers' : 'anemone', ix, 410, 190);
+        if (vr && key === 'hello') drawController(P.ctx, W / 2 + 150, 360, 'R', 'trigger', 0.85);
+        P.text(T[1], W / 2, 660, { size: 40, color: C.ink, maxW: 1240 });
+      } else {
+        if (vr) drawController(P.ctx, W / 2, 330, T[3], T[2], 0.95);
+        else { P.ctx.save(); const keys = { walk: ['W', 'A', 'S', 'D'], turn: ['Q', 'E'], menu: ['M'], voice: ['V'] }[key];
+          keys.forEach((kk, j) => { const x = W / 2 + (j - (keys.length - 1) / 2) * 130; P.rect(x - 52, 300, 104, 104, 22, 'rgba(255,255,255,0.9)'); P.text(kk, x, 354, { size: 52, weight: 700, color: C.greenDark }); }); P.ctx.restore(); }
+        P.text(T[1], W / 2, 660, { size: 40, color: C.ink, maxW: 1240 });
+        if (tut.done) { P.circle(W / 2 - 90, 770, 40, C.green); drawGlyph(P.ctx, 'check', W / 2 - 90, 770, 50); P.text('잘했어요!', W / 2 - 30, 772, { size: 40, weight: 700, color: C.greenDark, align: 'left' }); }
+      }
+      if (step > 0) P.button('prev', 360, 860, 300, 110, '이전', () => tutorial(step - 1), { size: 38, voice: ['이전', '뒤로'] });
+      if (key === 'end') P.button('go', 760, 860, 400, 110, '시작하기', () => { S.tutorialDone = true; E.save(); tut = null; mainMenu(); }, { kind: 'primary', size: 42, voice: ['시작'] });
+      else {
+        P.button('next', 760, 860, 400, 110, '다음', () => tutorial(step + 1), { kind: 'primary', size: 42, voice: ['다음'] });
+        P.button('skip', 1260, 860, 300, 110, '건너뛰기', () => { S.tutorialDone = true; E.save(); tut = null; mainMenu(); }, { size: 34, voice: ['건너뛰기'] });
+      }
+    }, 'front', 'tut');
+    E.say(T[0] + '. ' + T[1]);
+  }
+  function tutFrame() {
+    if (!tut || current !== 'tut' || tut.done) return;
+    const h = E.headWorld();
+    let ok = false;
+    if (tut.key === 'walk') ok = Math.hypot(h.x - tut.x0, h.z - tut.z0) > 0.8;
+    if (tut.key === 'turn') { let d = Math.abs(E.headYaw() - tut.yaw0) % (Math.PI * 2); if (d > Math.PI) d = Math.PI * 2 - d; ok = d > 0.45; }
+    if (ok) { tut.done = true; main.refresh(); E.say('잘했어요!'); const st = tut.step; setTimeout(() => { if (tut && tut.step === st && current === 'tut') tutorial(st + 1); }, 1800); }
+  }
+  // ================= 화면이 고개를 따라오게 =================
+  const FOLLOW = new Set(['market', 'shop', 'tea', 'mail']);
+  const _fp = new THREE.Vector3(), _fq = new THREE.Quaternion(), _tp = new THREE.Vector3(), _tq = new THREE.Quaternion();
+  let following = false;
+  function followFrame(dt) {
+    const on = main.visible && !E.inMR() && !E.carrying && (FOLLOW.has(activeZone) || current === 'tut');
+    if (!on) { following = false; return; }
+    _fp.copy(main.mesh.position); _fq.copy(main.mesh.quaternion);
+    E.placeInFront(main); _tp.copy(main.mesh.position); _tq.copy(main.mesh.quaternion);
+    main.mesh.position.copy(_fp); main.mesh.quaternion.copy(_fq);
+    const h = E.headWorld();
+    const a1 = Math.atan2(_fp.x - h.x, _fp.z - h.z), a2 = Math.atan2(_tp.x - h.x, _tp.z - h.z);
+    let da = Math.abs(a1 - a2) % (Math.PI * 2); if (da > Math.PI) da = Math.PI * 2 - da;
+    if (da > 0.45 || _fp.distanceTo(_tp) > 1.0) following = true;
+    if (following) {
+      const k = 1 - Math.exp(-(dt || 0.016) * 3.5);
+      main.mesh.position.lerp(_tp, k); main.mesh.quaternion.slerp(_tq, k);
+      if (main.mesh.position.distanceTo(_tp) < 0.03) following = false;
+    }
+  }
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
+    followFrame(dt); tutFrame();
     if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('출석 보상으로 꽃 코인 200개를 받았어요'); }
     // 눈앞에 큰 화면이 열려 있으면 정원 보관함 버튼은 잠시 숨김
     const gbOn = !E.inMR() && (!main.visible || activeZone === 'garden');
@@ -2205,6 +2333,7 @@ export function startGame(E) {
 
   // ================= 버튼 / 시작 =================
   E.onMenuButton = () => {
+    if (tut && tut.key === 'menu' && current === 'tut') { tut.done = true; main.refresh(); E.say('잘했어요!'); setTimeout(() => { if (tut && tut.key === 'menu') tutorial(tut.step + 1); }, 1500); return; }
     if (E.inMR()) { if (mr && mr.phase === 'pick') mrHud(); return; }
     if (E.carrying) { E.carry(null); return; }
     if (main.visible && current === 'menu') closeAll(); else { teaStop(); flash = null; shop = null; mainMenu(); }
@@ -2215,9 +2344,9 @@ export function startGame(E) {
     if (main.visible) { if (current === 'teaChat') teaEnd(); else closeAll(); }
   };
   const startPose = () => E.setPose(40.1, -10.5, 0);
-  E.onEnterDesktop = () => { startPose(); setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); }, 100); };
-  E.onEnterVR = () => { startPose(); if (mrReturn) { const f = mrReturn; mrReturn = null; setTimeout(f, 300); return; } setTimeout(() => { mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
+  E.onEnterDesktop = () => { startPose(); setTimeout(() => { if (!S.tutorialDone) tutorial(0); else mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); }, 100); };
+  E.onEnterVR = () => { startPose(); if (mrReturn) { const f = mrReturn; mrReturn = null; setTimeout(f, 300); return; } setTimeout(() => { if (!S.tutorialDone) tutorial(0); else mainMenu(); if (dailyMsg) setTimeout(() => E.toast(dailyMsg), 600); dailyMsg = null; }, 200); };
   startPose();
   E.refreshWatch();
-  window.MG_game = { trainingArea, flashStart, shopStart, _cur: () => current, _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
+  window.MG_game = { tutorial, _tut: () => tut, trainingArea, flashStart, shopStart, _cur: () => current, _sell: { sellableTotal, sellFlower, wildLeft, sellableOf, loginBonus }, mrInfo, mrBegin, _mr: () => mr, _mrPick: k => mrPick(mr.items[k]), customSetup, cartView, _sel: (i, c) => slotSelect(i, c), _apply: (i, k, it) => applyNeed(i, k, it), plantInfo, _b3slot: k => basketSlot(k), _bk: () => bk, basketStart, basketCheck, basketMake, basketDone, shopBuy, unlockPanel, plantInfo, _flashResult: (ok) => { flash = { level: 3 }; flashResult(ok, false); }, mainMenu, trainingArea, flashStart, shopStart, teaEntry, marketScreen, settings, mailScreen, inventory, guideTo, arrive: id => arrive(ZONES[id]), ZONES };
 }
