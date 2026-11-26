@@ -223,7 +223,7 @@ export class Panel {
     const g = gid && this.hits.find(h => typeof gid === 'function' ? gid(h) : h.id === gid);
     if (g) {
       const a = 0.6 + 0.4 * Math.sin(performance.now() / 260);
-      const pad = 12, r = Math.min(60, g.h / 2 + pad);
+      const pad = this.guidePad != null ? this.guidePad : 12, r = Math.min(60, g.h / 2 + pad);
       ctx.save();
       ctx.shadowColor = 'rgba(240,140,30,0.9)'; ctx.shadowBlur = 30;
       ctx.strokeStyle = `rgba(240,150,40,${a})`; ctx.lineWidth = 10;

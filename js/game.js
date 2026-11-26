@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=29';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=29';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=30';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=30';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -172,7 +172,7 @@ export function startGame(E) {
     activeZone = z.id;
     if (z.id === 'garden') gardenWelcome();
     else if (z.id === 'flash') flashStart();
-    else if (z.id === 'shop') shopStart();
+    else if (z.id === 'shop') { if (quest && QUEST[quest.i] && QUEST[quest.i].k === 'buy') shopBuy(); else shopStart(); }
     else if (z.id === 'tea') teaEntry();
     else if (z.id === 'market') marketScreen();
     else if (z.id === 'mr') mrInfo();
@@ -2335,13 +2335,14 @@ export function startGame(E) {
     { k: 'fert', title: '비료 주기', text: '이번에는 비료예요. 보관함의 “재배 용품”에서 비료를 꺼내 꽃 위에 놓아 주세요.', btn: '보관함 열기', go: () => { activeZone = 'garden'; invTab = 1; inventory(); } },
     { k: 'sun', title: '햇빛 쬐기', text: '해 모양 표시는 도구가 필요 없어요. 꽃 위의 해 표시를 바로 눌러 주세요.', btn: '정원으로 가기', go: () => guideTo('garden') },
     { k: 'tea', title: '정원 티파티', text: '티파티 자리로 가서 “참여하기”를 눌러 대화에 들어가 보세요. 그다음 “끝내기”를 누르면 돼요.', btn: '티파티로 가기', go: () => guideTo('tea') },
-    { k: 'buy', title: '기억 꽃집에서 사기', text: '기억 꽃집에서 물건을 하나 골라 장바구니에 담고, 동전으로 계산해 보세요.', btn: '기억 꽃집 열기', go: () => { activeZone = 'shop'; shopBuy(); } },
-    { k: 'mr', title: '야외 정원 (MR)', text: '야외 정원에서는 내 방 바닥에 피어난 꽃을 기억해서 딸 수 있어요. Quest 헤드셋에서 해 보세요.', btn: '야외 정원 열기', go: () => mrInfo() },
+    { k: 'buy', title: '기억 꽃집에서 사기', text: '기억 꽃집으로 걸어가서 물건을 하나 골라 장바구니에 담고, 동전으로 계산해 보세요.', btn: '기억 꽃집으로 가기', go: () => guideTo('shop') },
+    { k: 'mr', title: '야외 정원 (MR)', text: '야외 정원으로 걸어가 보세요. 내 방 바닥에 피어난 꽃을 기억해서 따는 곳이에요. Quest 헤드셋에서 해 보세요.', btn: '야외 정원으로 가기', go: () => guideTo('mr') },
     { k: 'market', title: '꽃 시장에서 팔기', text: '꽃 시장에서 꽃 3송이를 팔아 보세요. 판 만큼 꽃 코인을 받아요.', btn: '꽃 시장으로 가기', go: () => guideTo('market') },
     { k: 'mail', title: '우편함', text: '마지막으로 우편함을 열고, 가족이 보낸 꽃 소원에 꽃을 선물해 보세요.', btn: '우편함으로 가기', go: () => guideTo('mail') }
   ];
   const NEED_STEPS = ['water', 'fert', 'sun'];
   let quest = null;
+  E.toastDy = () => guideCard && guideCard.visible ? -0.1 : -0.42;
   const guideCard = new Panel(1200, 330, 1.0, { renderOrder: 70 });
   E.addPanel(guideCard);
   guideCard.show(false);
@@ -2484,15 +2485,15 @@ export function startGame(E) {
     if (c === 'teaChat' && k === 'tea') return ['end', '이야기를 나눠 본 다음 “끝내기”를 누르세요'];
     if (c === 'shopBuy' && k === 'buy') return Object.keys(cart).length ? ['cart', '“장바구니 보기”를 누르세요'] : [h => ITEMS[h.id] && h.id.startsWith('seed_'), '사고 싶은 물건을 눌러 장바구니에 담으세요'];
     if (c === 'cartView' && k === 'buy') return ['pay', '“계산하기”를 누르세요'];
-    if (c === 'cartPay' && k === 'buy') return ['pay', '값만큼 동전을 눌러 올린 다음 “계산하기”를 누르세요'];
+    if (c === 'cartPay' && k === 'buy') return payHint(cartTotal(), cartPay.tray);
     if (c === 'market' && k === 'market') return ['any', '“3송이 팔기”를 눌러 꽃을 팔아 보세요'];
     if (c === 'mail' && k === 'mail') return [h => /^w\d$/.test(h.id) && !h.disabled, '“선물하기”를 눌러 꽃을 보내 보세요'];
     const M = {
       flashResult: back, shopResult: back, teaEnd: back, mrDone: back,
       cartDone: ['home', '“정원으로”를 누르세요. 그다음 아래 안내 카드를 보세요'],
-      flashStart: ['start', '“시작하기”를 누르세요'], flashInstr: ['ok', '설명을 읽고 “확인”을 누르세요'], flashRun: [null, '반짝인 꽃의 자리를 기억해서 눌러 주세요'],
+      flashStart: ['start', '“시작하기”를 누르세요'], flashInstr: ['ok', '설명을 읽고 “확인”을 누르세요'], flashRun: flash ? [null, flash.phase === 'show' ? '꽃이 나타난 자리를 잘 기억하세요' : flash.phase === 'chooseB' ? '주황색으로 표시된 칸을 눌러 보세요. 나비가 있던 자리예요' : '주황색으로 표시된 칸을 눌러 보세요. 꽃이 있던 자리예요'] : null,
       shopStart: ['start', '“시작하기”를 누르세요'], shopInstr: ['ok', '설명을 읽고 “확인”을 누르세요'], shopList: ['done', '살 물건을 잘 기억한 다음 “다 기억했어요”를 누르세요'],
-      shopPick: ['pay', '기억한 물건을 모두 고른 다음 “계산하기”를 누르세요'], shopPay: ['pay', '동전을 올려 값을 맞춘 다음 “계산하기”를 누르세요'],
+      shopPick: shop ? pickHint() : null, shopPay: shop ? payHint(shopTotal(), shop.tray) : null,
       guide: ['walk', '“걸어서 가기”를 누르고 초록 빛기둥을 따라 걸어가세요'],
       mr: ['go', '“MR 시작하기”를 누르세요'], mrNo: ['ok', '“확인”을 누르면 다음 안내로 넘어가요'],
       questEnd: ['go', '“정원 둘러보기 시작”을 누르세요'],
@@ -2500,6 +2501,22 @@ export function startGame(E) {
       market: leave('키운 꽃을 팔아 꽃 코인을 받을 수 있어요.'), mail: leave('가족이 보낸 꽃 소원을 보고 꽃을 선물할 수 있어요.')
     };
     return M[c] || null;
+  }
+  // 동전 내기: 남은 금액에 맞는 동전을 하나씩 알려 주기
+  function payHint(total, tray) {
+    const sum = tray.reduce((a, b) => a + b, 0), left = total - sum;
+    if (left === 0) return ['pay', `딱 맞아요! 합계 ${total}코인. “계산하기”를 누르세요`];
+    if (left < 0) return ['undo', '너무 많이 올렸어요. “하나 빼기”를 누르세요'];
+    const v = [10, 5, 1].find(x => x <= left);
+    return ['c' + v, `합계는 ${total}코인이에요. 아직 ${left}코인이 남았어요. ${v}코인을 누르세요`];
+  }
+  // 기억 꽃집 고르기: 목록에 있던 물건을 하나씩 알려 주기
+  function pickHint() {
+    const l = shop.list.find(x => (shop.picked[x.id] || 0) < x.qty);
+    if (!l) return ['pay', '다 골랐어요! “계산하기”를 누르세요'];
+    const tab = ITEMS[l.id].tab;
+    if (tab !== shop.tab) return ['tab' + tab, `“${SHOP_TABS[tab]}” 칸을 누르세요`];
+    return [l.id, `목록에 있던 “${ITEMS[l.id].name}”을(를) 고르세요`];
   }
   // 안내 문장은 큰 화면 위쪽 바깥에 붙여서 버튼을 가리지 않게
   const hintBar = new Panel(1700, 150, 1.9 * 1700 / W, { renderOrder: 75 });
@@ -2518,9 +2535,17 @@ export function startGame(E) {
       qhKey = key;
       main.guideId = h ? h[0] : null; main.guideText = h && h[0] ? PRESS : '';
       main.refresh();
-      setHintBar(h && h[0] ? h[1] : ''); if (h) E.say(h[1]);
+      setHintBar(h ? h[1] : ''); if (h) E.say(h[1]);
     }
     if (hintBar.visible) hintBar.draw();
+    // 반짝 꽃 찾기: 안내 중에는 정답 칸을 주황색으로
+    const fOn = quest && current === 'flashRun' && flash;
+    tiles.forEach(t => {
+      const st = fOn && t.visible ? flash.cell[t.idx] : null;
+      const want = !!st && ((flash.phase === 'choose' && flash.answer.includes(t.idx) && !st.sel) || (flash.phase === 'chooseB' && t.idx === flash.bcell && !st.bsel));
+      if (want !== !!t.guideId) { t.guideId = want ? 't' : null; t.guidePad = -16; t.guideText = ''; t.refresh(); }
+      else if (want && now - qhT > 110) t.refresh();
+    });
     if ((main.guideId || gardenBar.guideId) && now - qhT > 120) { qhT = now; if (main.guideId) main.refresh(); if (gardenBar.guideId) gardenBar.refresh(); }
     // 정원: 보관함 버튼 · 빈 자리 · 꽃 위 표시를 직접 가리키기
     const k = quest && QUEST[quest.i] ? QUEST[quest.i].k : null;

@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=29';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=29';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=30';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=30';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -172,7 +172,7 @@ export function startGame(E) {
     activeZone = z.id;
     if (z.id === 'garden') gardenWelcome();
     else if (z.id === 'flash') flashStart();
-    else if (z.id === 'shop') shopStart();
+    else if (z.id === 'shop') { if (quest && QUEST[quest.i] && QUEST[quest.i].k === 'buy') shopBuy(); else shopStart(); }
     else if (z.id === 'tea') teaEntry();
     else if (z.id === 'market') marketScreen();
     else if (z.id === 'mr') mrInfo();
@@ -2335,13 +2335,14 @@ export function startGame(E) {
     { k: 'fert', title: '施肥', text: '这次是肥料。请从保管箱的“种植用品”里拿出肥料，放到花上。', btn: '打开保管箱', go: () => { activeZone = 'garden'; invTab = 1; inventory(); } },
     { k: 'sun', title: '晒太阳', text: '太阳图标不需要工具，直接点花上方的太阳图标就行。', btn: '去花园', go: () => guideTo('garden') },
     { k: 'tea', title: '花园茶话会', text: '到茶话会的座位，按“参加”进入聊天。然后按“结束”就可以了。', btn: '去茶话会', go: () => guideTo('tea') },
-    { k: 'buy', title: '在记忆花店买东西', text: '在记忆花店挑一样东西放进购物车，再用硬币结算。', btn: '打开记忆花店', go: () => { activeZone = 'shop'; shopBuy(); } },
-    { k: 'mr', title: '户外花园（MR）', text: '在户外花园里，可以记住花，然后在自己房间的地板上把花摘下来。请在 Quest 头显里试试。', btn: '打开户外花园', go: () => mrInfo() },
+    { k: 'buy', title: '在记忆花店买东西', text: '走到记忆花店，挑一样东西放进购物车，再用硬币结算。', btn: '去记忆花店', go: () => guideTo('shop') },
+    { k: 'mr', title: '户外花园（MR）', text: '走到户外花园看看。这里可以记住花，然后在自己房间的地板上把花摘下来。请在 Quest 头显里试试。', btn: '去户外花园', go: () => guideTo('mr') },
     { k: 'market', title: '在花市场卖花', text: '在花市场卖掉 3 朵花试试，卖多少就能得到多少花币。', btn: '去花市场', go: () => guideTo('market') },
     { k: 'mail', title: '信箱', text: '最后打开信箱，按家人花的心愿送一束花吧。', btn: '去信箱', go: () => guideTo('mail') }
   ];
   const NEED_STEPS = ['water', 'fert', 'sun'];
   let quest = null;
+  E.toastDy = () => guideCard && guideCard.visible ? -0.1 : -0.42;
   const guideCard = new Panel(1200, 330, 1.0, { renderOrder: 70 });
   E.addPanel(guideCard);
   guideCard.show(false);
@@ -2484,15 +2485,15 @@ export function startGame(E) {
     if (c === 'teaChat' && k === 'tea') return ['end', '聊一聊以后，按“结束”'];
     if (c === 'shopBuy' && k === 'buy') return Object.keys(cart).length ? ['cart', '请按“查看购物车”'] : [h => ITEMS[h.id] && h.id.startsWith('seed_'), '点想买的东西，把它放进购物车'];
     if (c === 'cartView' && k === 'buy') return ['pay', '请按“结算”'];
-    if (c === 'cartPay' && k === 'buy') return ['pay', '按价钱把硬币一个个放上去，然后按“结算”'];
+    if (c === 'cartPay' && k === 'buy') return payHint(cartTotal(), cartPay.tray);
     if (c === 'market' && k === 'market') return ['any', '按“卖3朵”试着卖花吧'];
     if (c === 'mail' && k === 'mail') return [h => /^w\d$/.test(h.id) && !h.disabled, '按“送礼物”把花送出去吧'];
     const M = {
       flashResult: back, shopResult: back, teaEnd: back, mrDone: back,
       cartDone: ['home', '请按“回花园”，然后看下方的指南卡片'],
-      flashStart: ['start', '请按“开始”'], flashInstr: ['ok', '看完说明后按“确认”'], flashRun: [null, '记住闪过的花的位置，然后点那里'],
+      flashStart: ['start', '请按“开始”'], flashInstr: ['ok', '看完说明后按“确认”'], flashRun: flash ? [null, flash.phase === 'show' ? '记住花出现的位置' : flash.phase === 'chooseB' ? '请按橙色标出的格子，那里刚才有蝴蝶' : '请按橙色标出的格子，那里刚才有花'] : null,
       shopStart: ['start', '请按“开始”'], shopInstr: ['ok', '看完说明后按“确认”'], shopList: ['done', '记住要买的东西，然后按“都记住了”'],
-      shopPick: ['pay', '选好记住的所有东西，然后按“结算”'], shopPay: ['pay', '把硬币放上去凑够钱，然后按“结算”'],
+      shopPick: shop ? pickHint() : null, shopPay: shop ? payHint(shopTotal(), shop.tray) : null,
       guide: ['walk', '请按“走过去”，然后跟着绿色光柱走'],
       mr: ['go', '请按“开始 MR”'], mrNo: ['ok', '按“确认”就会进入下一步'],
       questEnd: ['go', '请按“开始逛花园”'],
@@ -2500,6 +2501,22 @@ export function startGame(E) {
       market: leave('可以卖掉自己种的花，换花币。'), mail: leave('可以看家人发来的花的心愿，还可以送花。')
     };
     return M[c] || null;
+  }
+  // 동전 내기: 남은 금액에 맞는 동전을 하나씩 알려 주기
+  function payHint(total, tray) {
+    const sum = tray.reduce((a, b) => a + b, 0), left = total - sum;
+    if (left === 0) return ['pay', `刚刚好！一共 ${total} 花币，请按“结算”`];
+    if (left < 0) return ['undo', '放多了，请按“拿掉一个”'];
+    const v = [10, 5, 1].find(x => x <= left);
+    return ['c' + v, `一共 ${total} 花币，还差 ${left} 花币，请按 ${v} 的硬币`];
+  }
+  // 기억 꽃집 고르기: 목록에 있던 물건을 하나씩 알려 주기
+  function pickHint() {
+    const l = shop.list.find(x => (shop.picked[x.id] || 0) < x.qty);
+    if (!l) return ['pay', '都选好了！请按“结算”'];
+    const tab = ITEMS[l.id].tab;
+    if (tab !== shop.tab) return ['tab' + tab, `请按“${SHOP_TABS[tab]}”这一栏`];
+    return [l.id, `请选清单上的“${ITEMS[l.id].name}”`];
   }
   // 안내 문장은 큰 화면 위쪽 바깥에 붙여서 버튼을 가리지 않게
   const hintBar = new Panel(1700, 150, 1.9 * 1700 / W, { renderOrder: 75 });
@@ -2518,9 +2535,17 @@ export function startGame(E) {
       qhKey = key;
       main.guideId = h ? h[0] : null; main.guideText = h && h[0] ? PRESS : '';
       main.refresh();
-      setHintBar(h && h[0] ? h[1] : ''); if (h) E.say(h[1]);
+      setHintBar(h ? h[1] : ''); if (h) E.say(h[1]);
     }
     if (hintBar.visible) hintBar.draw();
+    // 반짝 꽃 찾기: 안내 중에는 정답 칸을 주황색으로
+    const fOn = quest && current === 'flashRun' && flash;
+    tiles.forEach(t => {
+      const st = fOn && t.visible ? flash.cell[t.idx] : null;
+      const want = !!st && ((flash.phase === 'choose' && flash.answer.includes(t.idx) && !st.sel) || (flash.phase === 'chooseB' && t.idx === flash.bcell && !st.bsel));
+      if (want !== !!t.guideId) { t.guideId = want ? 't' : null; t.guidePad = -16; t.guideText = ''; t.refresh(); }
+      else if (want && now - qhT > 110) t.refresh();
+    });
     if ((main.guideId || gardenBar.guideId) && now - qhT > 120) { qhT = now; if (main.guideId) main.refresh(); if (gardenBar.guideId) gardenBar.refresh(); }
     // 정원: 보관함 버튼 · 빈 자리 · 꽃 위 표시를 직접 가리키기
     const k = quest && QUEST[quest.i] ? QUEST[quest.i].k : null;

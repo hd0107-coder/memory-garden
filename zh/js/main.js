@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=29';
-import { loadState, saveState } from './data.js?v=29';
-import { startGame } from './game.js?v=29';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=30';
+import { loadState, saveState } from './data.js?v=30';
+import { startGame } from './game.js?v=30';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -146,7 +146,7 @@ E.addPanel(toast); toast.show(false);
 let toastT = 0;
 E.toast = (msg, speak = true, dur = 3800) => {
   toast.setView(P => { P.glass(10, 10, P.W - 20, P.H - 20, 64, 'rgba(255,255,255,0.9)'); P.text(msg, P.W / 2, P.H / 2 + 2, { size: 50, weight: 700, maxW: P.W - 90 }); });
-  E.placeInFront(toast, 1.6, -0.42);
+  E.placeInFront(toast, 1.6, E.toastDy ? E.toastDy() : -0.42);
   toast.show(true); toastT = performance.now() + dur;
   if (speak) E.say(msg);
   $('toast').textContent = msg; $('toast').style.opacity = 1;
