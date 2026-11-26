@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=30';
-import { loadState, saveState } from './data.js?v=30';
-import { startGame } from './game.js?v=30';
+import { Panel, Bubble, C, loadIcons, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS, BLUR } from './ui.js?v=31';
+import { loadState, saveState } from './data.js?v=31';
+import { startGame } from './game.js?v=31';
 
 // Blender 좌표(x, y, z) → three 좌표
 const FLOOR_Y = 0.133;
@@ -821,7 +821,7 @@ const MODELS = [
 const ICONS = ['rose', 'hydrangea', 'anemone', 'poppy', 'daffodil', 'iris', 'tulip', 'daisy', 'sunflower', 'tulip_bud',
   'wheelbarrow', 'sieve', 'kneeling_pad', 'hose', 'hand_fork', 'gloves', 'fertilizer', 'watering_can', 'basket', 'soil',
   'seeds', 'pot', 'plant_labels', 'pruners', 'hoe', 'cultivator', 'weeder', 'dibber',
-  'ic_basket', 'ic_market', 'ic_flowers', 'ic_tea', 'ic_mail', 'ribbon', 'wrap', 'pesticide'];
+  'ic_basket', 'ic_market', 'ic_flowers', 'ic_tea', 'ic_mail', 'ribbon', 'wrap', 'pesticide', 'storage'];
 
 async function boot() {
   const draco = new DRACOLoader().setDecoderPath('vendor/three/addons/libs/draco/gltf/');
@@ -892,6 +892,8 @@ $('btnMic').addEventListener('click', async () => {
 $('mic').addEventListener('pointerdown', () => E.voiceStart());
 $('mic').addEventListener('pointerup', () => E.voiceStop());
 $('menuBtn').addEventListener('click', () => E.onMenuButton && E.onMenuButton());
+$('guideBtn').addEventListener('click', () => E.onGuideButton && E.onGuideButton());
+E.exitXR = () => { const ss = renderer.xr.getSession(); if (ss) ss.end(); };
 $('vrBtn2').addEventListener('click', () => enterVR());
 $('btnMR').addEventListener('click', () => E.enterMR());
 $('btnMRBack').addEventListener('click', () => { showMRButton(false); E.onMRCancel && E.onMRCancel(); enterVR(); });

@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=30';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=30';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=31';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=31';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -121,7 +121,6 @@ export function startGame(E) {
         ['garden', '정원 가꾸기', 'ic_flowers', () => guideTo('garden'), ['정원 가꾸기', '정원', '꽃 심기']],
         ['train', '훈련 공간', 'anemone', () => trainingArea(), ['훈련 공간', '훈련']],
         ['mail', '우편함', 'ic_mail', () => guideTo('mail'), ['우편함', '편지', '소원']],
-        ['quest', '처음 안내', 'plant_labels', () => questStart(), ['처음 안내', '안내', '처음']],
         ['set', '설정', 'gear', () => settings(), ['설정']]
       ];
       items.forEach((it, i) => {
@@ -1792,7 +1791,7 @@ export function startGame(E) {
   gardenBar.mesh.rotation.x = 0;
   gardenBar.setView(P => {
     P.button('inv', 300, 20, 400, 110, '보관함', () => { activeZone = 'garden'; inventory(); }, { size: 44, voice: ['보관함'], dx: 30 });
-    drawGlyph(P.ctx, 'box', 410, 75, 60);
+    P.icon('storage', 400, 75, 86);
     P.rect(200, 160, 600, 70, 35, 'rgba(255,255,255,0.58)');
     P.text('빛나는 동그라미를 눌러 꽃을 심어 보세요', 500, 196, { size: 28, color: '#555' });
   });
@@ -2052,7 +2051,7 @@ export function startGame(E) {
         let n = 3;
         Object.keys(FLOWERS).sort((a, b) => sellableOf(b) - sellableOf(a)).forEach(t => { const k = Math.min(n, sellableOf(t)); if (k > 0) sellFlower(t, k); n -= k; });
         S.coins += 3 * PRICE; log('market', { act: 'any', n: 3 }); E.save(); E.refreshWatch();
-        E.toast(`꽃 3송이를 팔았어요. 꽃 코인 +${3 * PRICE}`); marketScreen(); qev('market');
+        E.toast(`꽃 3송이를 팔았어요. 꽃 코인 +${3 * PRICE}`); marketScreen(); if (quest) { quest.did = quest.did || {}; quest.did.sold = true; } qev('market');
       }, { kind: 'primary', disabled: total < 3, size: 36, voice: ['3송이', '아무 꽃'] });
       // 오늘의 주문 2: 정해진 꽃
       P.rect(320, 660, 1280, 200, 30, 'rgba(255,255,255,0.58)');
@@ -2330,9 +2329,9 @@ export function startGame(E) {
   const QUEST = [
     { k: 'flash', title: '반짝 꽃 찾기 해 보기', text: '훈련 공간에서 “반짝 꽃 찾기”를 한 번 해 보세요. 잠깐 나타난 꽃의 위치를 기억하는 훈련이에요.', btn: '훈련 공간 열기', go: () => trainingArea() },
     { k: 'shopT', title: '기억 꽃집 훈련 해 보기', text: '이번에는 훈련 공간의 “기억 꽃집”을 해 보세요. 살 물건을 기억했다가 꽃집에서 고르는 훈련이에요.', btn: '훈련 공간 열기', go: () => trainingArea() },
-    { k: 'plant', title: '씨앗 심기', text: '정원 앞의 “보관함”을 눌러 씨앗을 꺼내고, 누른 채로 빈 동그라미 위에 놓아 심어 보세요.', btn: '정원으로 가기', go: () => guideTo('garden') },
-    { k: 'water', title: '물 주기', text: '꽃 위에 물방울 표시가 떴어요. 보관함의 “원예 도구”에서 물뿌리개를 꺼내 꽃 위에 놓아 주세요.', btn: '보관함 열기', go: () => { activeZone = 'garden'; invTab = 2; inventory(); } },
-    { k: 'fert', title: '비료 주기', text: '이번에는 비료예요. 보관함의 “재배 용품”에서 비료를 꺼내 꽃 위에 놓아 주세요.', btn: '보관함 열기', go: () => { activeZone = 'garden'; invTab = 1; inventory(); } },
+    { k: 'plant', title: '씨앗 심기', text: '정원의 빈 동그라미를 먼저 누르고, “보관함 보기”에서 씨앗을 꺼내 그 자리에 놓아 심어 보세요.', btn: '정원으로 가기', go: () => guideTo('garden') },
+    { k: 'water', title: '물 주기', text: '꽃 위에 물방울 표시가 떴어요. 꽃을 누르고 “보관함 열기”에서 물뿌리개를 꺼내 꽃 위에 놓아 주세요.', btn: '정원으로 가기', go: () => guideTo('garden') },
+    { k: 'fert', title: '비료 주기', text: '이번에는 비료예요. 꽃을 누르고 “보관함 열기”의 “재배 용품”에서 비료를 꺼내 꽃 위에 놓아 주세요.', btn: '정원으로 가기', go: () => guideTo('garden') },
     { k: 'sun', title: '햇빛 쬐기', text: '해 모양 표시는 도구가 필요 없어요. 꽃 위의 해 표시를 바로 눌러 주세요.', btn: '정원으로 가기', go: () => guideTo('garden') },
     { k: 'tea', title: '정원 티파티', text: '티파티 자리로 가서 “참여하기”를 눌러 대화에 들어가 보세요. 그다음 “끝내기”를 누르면 돼요.', btn: '티파티로 가기', go: () => guideTo('tea') },
     { k: 'buy', title: '기억 꽃집에서 사기', text: '기억 꽃집으로 걸어가서 물건을 하나 골라 장바구니에 담고, 동전으로 계산해 보세요.', btn: '기억 꽃집으로 가기', go: () => guideTo('shop') },
@@ -2343,6 +2342,7 @@ export function startGame(E) {
   const NEED_STEPS = ['water', 'fert', 'sun'];
   let quest = null;
   E.toastDy = () => guideCard && guideCard.visible ? -0.1 : -0.42;
+  E.onGuideButton = () => { if (quest && QUEST[quest.i]) { closeAll(); quest.cardOn = true; quest.cardSeen = false; questShow(true); } else questStart(); };
   const guideCard = new Panel(1200, 330, 1.0, { renderOrder: 70 });
   E.addPanel(guideCard);
   guideCard.show(false);
@@ -2407,10 +2407,12 @@ export function startGame(E) {
       P.text(`처음 안내 ${quest.i + 1} / ${QUEST.length}`, 175, 62, { size: 28, weight: 700, color: '#fff' });
       P.text(q.title, 340, 62, { size: 44, weight: 700, align: 'left' });
       P.text(q.text, 600, 160, { size: 32, color: C.ink, maxW: 1100 });
-      P.button('go', 330, 222, 480, 84, q.btn, () => q.go(), { kind: 'primary', size: 34, voice: [q.btn] });
+      P.button('go', 330, 222, 480, 84, q.btn, () => { quest.cardOn = false; guideCard.show(false); q.go(); }, { kind: 'primary', size: 34, voice: [q.btn] });
+      P.roundBtn('hide', 1130, 60, 34, 'close', () => { quest.cardOn = false; guideCard.show(false); }, ['닫기']);
       P.button('stop', 850, 222, 300, 84, '안내 그만하기', () => questStop(), { size: 30, voice: ['안내 그만'] });
     });
-    if (!main.visible) { guideCard.show(true); placeGuide(true); if (speak) E.say(q.title + '. ' + q.text); }
+    quest.cardOn = true; quest.cardSeen = false;
+    if (!main.visible) { guideCard.show(true); placeGuide(true); quest.cardSeen = true; if (speak) E.say(q.title + '. ' + q.text); }
     else if (speak) quest.pendingSay = true;
   }
   function qev(key) {
@@ -2425,7 +2427,7 @@ export function startGame(E) {
   let guideMove = false;
   function guideTarget(out) {
     const h = E.headWorld(), yaw = E.headYaw(), d = E.inXR() ? 1.55 : 1.15;
-    out.set(h.x - Math.sin(yaw) * d, Math.max(0.55, h.y - (E.inXR() ? 0.78 : 0.4)), h.z - Math.cos(yaw) * d);
+    out.set(h.x - Math.sin(yaw) * d, Math.max(0.5, h.y - (E.inXR() ? 0.98 : 0.4)), h.z - Math.cos(yaw) * d);
     return h;
   }
   function placeGuide(now) {
@@ -2434,7 +2436,10 @@ export function startGame(E) {
   }
   function guideFrame(dt) {
     // 큰 화면이 열려 있을 때는 그 화면을 따라 하면 되니까 안내 카드는 잠시 숨김
-    const want = !!quest && !!QUEST[quest.i] && !E.inMR() && !main.visible;
+    // 안내 카드는 새 단계가 시작될 때만 보여 주고, 큰 화면을 열거나 버튼을 누르면 숨김
+    if (quest && quest.cardSeen && main.visible) quest.cardOn = false;
+    const want = !!quest && !!QUEST[quest.i] && quest.cardOn && !E.inMR() && !main.visible;
+    if (want && !guideCard.visible) quest.cardSeen = true;
     if (guideCard.visible !== want) {
       guideCard.show(want);
       if (want) { placeGuide(true); if (quest.pendingSay && QUEST[quest.i]) { quest.pendingSay = false; const q = QUEST[quest.i]; E.say(q.title + '. ' + q.text); } }
@@ -2479,14 +2484,14 @@ export function startGame(E) {
       if (TOOL[k]) return ['inv', '“보관함 열기”를 누르세요'];
       return ['close', '“닫기”를 누르세요'];
     }
-    if (c === 'garden-choose') return k === 'plant' ? [h => FLOWERS[h.id] && !h.disabled, '심고 싶은 꽃을 고르세요'] : ['x', '닫기 버튼을 누르세요'];
+    if (c === 'garden-choose') return k === 'plant' ? ['inv', '“보관함 보기”를 눌러 씨앗을 꺼내세요'] : ['x', '닫기 버튼을 누르세요'];
     if (c === 'garden-confirm') return ['yes', '“심기”를 누르세요'];
     if (c === 'teaEntry' && k === 'tea') return ['join0', '“참여하기”를 눌러 대화에 들어가세요'];
     if (c === 'teaChat' && k === 'tea') return ['end', '이야기를 나눠 본 다음 “끝내기”를 누르세요'];
     if (c === 'shopBuy' && k === 'buy') return Object.keys(cart).length ? ['cart', '“장바구니 보기”를 누르세요'] : [h => ITEMS[h.id] && h.id.startsWith('seed_'), '사고 싶은 물건을 눌러 장바구니에 담으세요'];
     if (c === 'cartView' && k === 'buy') return ['pay', '“계산하기”를 누르세요'];
     if (c === 'cartPay' && k === 'buy') return payHint(cartTotal(), cartPay.tray);
-    if (c === 'market' && k === 'market') return ['any', '“3송이 팔기”를 눌러 꽃을 팔아 보세요'];
+    if (c === 'market' && (k === 'market' || !(quest.did && quest.did.sold))) return ['any', '“3송이 팔기”를 눌러 꽃을 팔아 보세요'];
     if (c === 'mail' && k === 'mail') return [h => /^w\d$/.test(h.id) && !h.disabled, '“선물하기”를 눌러 꽃을 보내 보세요'];
     const M = {
       flashResult: back, shopResult: back, teaEnd: back, mrDone: back,
@@ -2549,13 +2554,14 @@ export function startGame(E) {
     if ((main.guideId || gardenBar.guideId) && now - qhT > 120) { qhT = now; if (main.guideId) main.refresh(); if (gardenBar.guideId) gardenBar.refresh(); }
     // 정원: 보관함 버튼 · 빈 자리 · 꽃 위 표시를 직접 가리키기
     const k = quest && QUEST[quest.i] ? QUEST[quest.i].k : null;
-    const gStep = k === 'plant' || k === 'water' || k === 'fert';
-    const gb = gStep && !main.visible && !E.carrying && !E.inMR() ? 'inv' : null;
+    const gb = null;
     if (gardenBar.guideId !== gb) { gardenBar.guideId = gb; gardenBar.guideText = gb ? PRESS : ''; gardenBar.refresh(); }
     let tgt = null, txt = '';
     if (quest && !main.visible && !E.inMR()) {
       const c = E.carrying && E.carrying.id;
-      if (k === 'plant' && c && c.startsWith('seed_')) { const i = S.slots.findIndex(q => !q); if (i >= 0) { tgt = slotObjs[i].root; txt = '여기에 놓으세요'; } }
+      const pi = quest.slot != null ? quest.slot : S.slots.findIndex(q => q && q.needs && q.needs[k]);
+      if (k === 'plant') { const i = S.slots.findIndex(q => !q); if (i >= 0 && (!c || c.startsWith('seed_'))) { tgt = slotObjs[i].root; txt = c ? '여기에 놓으세요' : '빈 자리를 누르세요'; } }
+      if ((k === 'water' || k === 'fert') && !c && pi >= 0 && slotObjs[pi]) { tgt = slotObjs[pi].root; txt = '꽃을 누르세요'; }
       if ((k === 'water' && c === 'watering_can') || (k === 'fert' && c === 'fertilizer') || k === 'sun') {
         const i = quest.slot != null ? quest.slot : S.slots.findIndex(q => q && q.needs && q.needs[k]);
         if (i >= 0 && slotObjs[i]) { tgt = slotObjs[i].status.sprite; txt = k === 'sun' ? '여기를 누르세요' : '여기에 놓으세요'; }
@@ -2619,9 +2625,43 @@ export function startGame(E) {
     }
   }
 
+  // ================= VR 안에서도 늘 보이는 아래쪽 버튼 줄 =================
+  const vrHud = new Panel(1300, 170, 0.66, { renderOrder: 72 });
+  E.addPanel(vrHud); vrHud.show(false);
+  let hudTalk = false;
+  function paintHud() {
+    vrHud.setView(P => {
+      P.glass(4, 4, 1292, 162, 80, 'rgba(255,255,255,0.5)');
+      P.button('menu', 30, 30, 300, 110, '메뉴', () => E.onMenuButton && E.onMenuButton(), { size: 40, voice: [] });
+      P.button('talk', 350, 30, 400, 110, E.listening ? '말하는 중 · 다시 누르면 끝' : '말하기', () => { if (E.listening) E.voiceStop(); else E.voiceStart(); setTimeout(paintHud, 50); }, { kind: E.listening ? 'primary' : 'secondary', size: E.listening ? 30 : 40, voice: [] });
+      P.button('exit', 770, 30, 300, 110, 'VR 나가기', () => E.exitXR && E.exitXR(), { size: 36, voice: [] });
+      P.circle(1180, 85, 62, C.green, '#fff', 5); P.icon('plant_labels', 1180, 85, 84);
+      P.hit('guide', 1118, 23, 124, 124, () => E.onGuideButton && E.onGuideButton(), { voice: [] });
+    });
+  }
+  paintHud();
+  const _hp = new THREE.Vector3(), _ht = new THREE.Vector3();
+  let hudMove = false;
+  function hudFrame(dt) {
+    const on = E.inXR() && !E.inMR();
+    if (vrHud.visible !== on) { vrHud.show(on); hudMove = true; }
+    if (!on) return;
+    if (hudTalk !== !!E.listening) { hudTalk = !!E.listening; paintHud(); }
+    const h = E.headWorld(), yaw = E.headYaw();
+    _ht.set(h.x - Math.sin(yaw) * 1.3, Math.max(0.45, h.y - 0.6), h.z - Math.cos(yaw) * 1.3);
+    _hp.copy(vrHud.mesh.position);
+    const a1 = Math.atan2(_hp.x - h.x, _hp.z - h.z), a2 = Math.atan2(_ht.x - h.x, _ht.z - h.z);
+    let da = Math.abs(a1 - a2) % (Math.PI * 2); if (da > Math.PI) da = Math.PI * 2 - da;
+    if (da > 0.5 || _hp.distanceTo(_ht) > 0.8) hudMove = true;
+    if (hudMove) {
+      const k = 1 - Math.exp(-(dt || 0.016) * 4);
+      vrHud.mesh.position.lerp(_ht, k); vrHud.mesh.lookAt(h.x, h.y, h.z);
+      if (vrHud.mesh.position.distanceTo(_ht) < 0.02) hudMove = false;
+    }
+  }
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
-    followFrame(dt); tutFrame(); guideFrame(dt); questHintFrame(now); dirFrame();
+    hudFrame(dt); followFrame(dt); tutFrame(); guideFrame(dt); questHintFrame(now); dirFrame();
     if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('출석 보상으로 꽃 코인 200개를 받았어요'); }
     // 눈앞에 큰 화면이 열려 있으면 정원 보관함 버튼은 잠시 숨김
     const gbOn = !E.inMR() && (!main.visible || activeZone === 'garden');
