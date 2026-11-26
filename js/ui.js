@@ -218,6 +218,41 @@ export class Panel {
     ctx.clearRect(0, 0, this.W, this.H);
     this.hits = [];
     this.view(this);
+    // 안내 중일 때 눌러야 할 버튼을 주황색으로 반짝이게
+    const g = this.guideId && this.hits.find(h => h.id === this.guideId);
+    if (g) {
+      const a = 0.6 + 0.4 * Math.sin(performance.now() / 260);
+      const pad = 12, r = Math.min(60, g.h / 2 + pad);
+      ctx.save();
+      ctx.shadowColor = 'rgba(240,140,30,0.9)'; ctx.shadowBlur = 30;
+      ctx.strokeStyle = `rgba(240,150,40,${a})`; ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.roundRect(g.x - pad, g.y - pad, g.w + pad * 2, g.h + pad * 2, r); ctx.stroke();
+      ctx.restore();
+      if (this.guideText) {
+        ctx.save();
+        ctx.font = `700 34px ${FONT}`;
+        const tw = ctx.measureText(this.guideText).width + 56, th = 64, gap = pad + 24;
+        const mid = g.y + g.h / 2, cxg = g.x + g.w / 2;
+        // 위 · 오른쪽 · 아래 · 왼쪽 중에서 다른 버튼을 가리지 않는 곳
+        const cands = [
+          ['up', cxg - tw / 2, g.y - gap - th], ['right', g.x + g.w + gap, mid - th / 2],
+          ['down', cxg - tw / 2, g.y + g.h + gap], ['left', g.x - gap - tw, mid - th / 2]
+        ];
+        const free = ([, x, y]) => x >= 4 && y >= 4 && x + tw <= this.W - 4 && y + th <= this.H - 4 &&
+          !this.hits.some(o => o !== g && x < o.x + o.w && x + tw > o.x && y < o.y + o.h && y + th > o.y);
+        const [side, bx, by] = cands.find(free) || cands[0];
+        ctx.fillStyle = '#f08c1e';
+        ctx.beginPath(); ctx.roundRect(bx, by, tw, th, th / 2); ctx.fill();
+        ctx.beginPath();
+        if (side === 'up') { ctx.moveTo(cxg - 16, by + th - 1); ctx.lineTo(cxg + 16, by + th - 1); ctx.lineTo(cxg, by + th + 18); }
+        if (side === 'down') { ctx.moveTo(cxg - 16, by + 1); ctx.lineTo(cxg + 16, by + 1); ctx.lineTo(cxg, by - 18); }
+        if (side === 'right') { ctx.moveTo(bx + 1, mid - 16); ctx.lineTo(bx + 1, mid + 16); ctx.lineTo(bx - 18, mid); }
+        if (side === 'left') { ctx.moveTo(bx + tw - 1, mid - 16); ctx.lineTo(bx + tw - 1, mid + 16); ctx.lineTo(bx + tw + 18, mid); }
+        ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.guideText, bx + tw / 2, by + th / 2 + 1);
+        ctx.restore();
+      }
+    }
     this.tex.needsUpdate = true;
   }
   // 레이 교차점(uv) → 버튼

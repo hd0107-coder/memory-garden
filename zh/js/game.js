@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=27';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=27';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=28';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=28';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -2361,8 +2361,8 @@ export function startGame(E) {
       P.button('go', 330, 222, 480, 84, q.btn, () => q.go(), { kind: 'primary', size: 34, voice: [q.btn] });
       P.button('stop', 850, 222, 300, 84, '停止指南', () => questStop(), { size: 30, voice: ['停止指南'] });
     });
-    if (!main.visible) { guideCard.show(true); placeGuide(true); }
-    if (speak) E.say(q.title + '. ' + q.text);
+    if (!main.visible) { guideCard.show(true); placeGuide(true); if (speak) E.say(q.title + '. ' + q.text); }
+    else if (speak) quest.pendingSay = true;
   }
   function qev(key) {
     if (!quest || QUEST[quest.i].k !== key) return;
@@ -2390,7 +2390,10 @@ export function startGame(E) {
   function guideFrame(dt) {
     // 큰 화면이 열려 있을 때는 그 화면을 따라 하면 되니까 안내 카드는 잠시 숨김
     const want = !!quest && !E.inMR() && !main.visible;
-    if (guideCard.visible !== want) { guideCard.show(want); if (want) placeGuide(true); }
+    if (guideCard.visible !== want) {
+      guideCard.show(want);
+      if (want) { placeGuide(true); if (quest.pendingSay) { quest.pendingSay = false; const q = QUEST[quest.i]; E.say(q.title + '. ' + q.text); } }
+    }
     if (!want) return;
     const h = guideTarget(_gt);
     _gp.copy(guideCard.mesh.position);
@@ -2403,9 +2406,53 @@ export function startGame(E) {
       if (guideCard.mesh.position.distanceTo(_gt) < 0.03) guideMove = false;
     }
   }
+
+  // 안내 중: 지금 화면에서 눌러야 할 버튼을 알려 주기
+  const PRESS = '请按这里';
+  function questHint() {
+    if (!quest || !main.visible || E.inMR()) return null;
+    const k = QUEST[quest.i].k, c = current;
+    const back = ['home', '请按“回到花园”，然后看下方的指南卡片'];
+    const leave = (txt) => ['exit', txt + '看完以后，按左上角的离开按钮。'];
+    const M = {
+      flashResult: back, shopResult: back, teaEnd: back, mrDone: back,
+      flashStart: ['start', '请按“开始”'], flashInstr: ['ok', '看完说明后按“确认”'], flashRun: [null, '记住闪过的花的位置，然后点那里'],
+      shopStart: ['start', '请按“开始”'], shopInstr: ['ok', '看完说明后按“确认”'], shopList: ['done', '记住要买的东西，然后按“都记住了”'],
+      shopPick: ['pay', '选好记住的所有东西，然后按“结算”'], shopPay: ['pay', '把硬币放上去凑够钱，然后按“结算”'],
+      guide: ['walk', '请按“走过去”，然后跟着绿色光柱走'],
+      'garden-choose': [null, '请选一颗想种的种子'], 'garden-confirm': ['yes', '请按“种”'],
+      mr: ['go', '请按“开始 MR”'], mrNo: ['ok', '按“确认”就会进入下一步'],
+      teaEntry: leave('这里是和家人朋友聊天的地方。按“参加”就能加入聊天。'),
+      shopBuy: leave('可以挑选东西放进购物车，然后结算。'),
+      market: leave('可以卖掉自己种的花，换花币。'),
+      mail: leave('可以看家人发来的花的心愿，还可以送花。')
+    };
+    if (c === 'menu') {
+      const t = { flash: 'train', shopT: 'train', plant: 'garden', tea: 'tea', market: 'market', mail: 'mail' }[k];
+      return t ? [t, '请按这个按钮'] : ['close', '请关掉菜单，看下方的指南卡片'];
+    }
+    if (c === 'training') {
+      if (k === 'flash') return ['flash', '请按“闪光找花”'];
+      if (k === 'shopT') return ['shop', '请按“记忆花店”'];
+      return ['exit', '请按离开按钮，然后看下方的指南卡片'];
+    }
+    return M[c] || null;
+  }
+  let qhKey = '', qhT = 0;
+  function questHintFrame(now) {
+    const h = questHint();
+    const key = h ? current + '|' + h[0] + '|' + h[1] : '';
+    if (key !== qhKey) {
+      qhKey = key;
+      main.guideId = h ? h[0] : null; main.guideText = h && h[0] ? PRESS : '';
+      main.refresh();
+      if (h) { if (h[0]) E.toast(h[1], false, 5000); E.say(h[1]); }
+    }
+    if (main.guideId && now - qhT > 120) { qhT = now; main.refresh(); }
+  }
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
-    followFrame(dt); tutFrame(); guideFrame(dt);
+    followFrame(dt); tutFrame(); guideFrame(dt); questHintFrame(now);
     if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('签到奖励：获得 200 花币'); }
     // 눈앞에 큰 화면이 열려 있으면 정원 보관함 버튼은 잠시 숨김
     const gbOn = !E.inMR() && (!main.visible || activeZone === 'garden');

@@ -1,7 +1,7 @@
 // 기억정원 · 게임 화면과 규칙 (한국어)
 import * as THREE from 'three';
-import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=27';
-import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=27';
+import { Panel, Bubble, C, drawGlyph, drawIcon, FONT, B, yawOf, UI_OBJS } from './ui.js?v=28';
+import { ITEMS, BASKETS, FLOWER_PRICE, basketPrice, SHOP_TABS, FLOWERS, STAGE_NAMES, FLASH_POOL, flashCfg, todayStr, clearState } from './data.js?v=28';
 
 const W = 1920, H = 1080;
 const rnd = n => Math.floor(Math.random() * n);
@@ -2361,8 +2361,8 @@ export function startGame(E) {
       P.button('go', 330, 222, 480, 84, q.btn, () => q.go(), { kind: 'primary', size: 34, voice: [q.btn] });
       P.button('stop', 850, 222, 300, 84, '안내 그만하기', () => questStop(), { size: 30, voice: ['안내 그만'] });
     });
-    if (!main.visible) { guideCard.show(true); placeGuide(true); }
-    if (speak) E.say(q.title + '. ' + q.text);
+    if (!main.visible) { guideCard.show(true); placeGuide(true); if (speak) E.say(q.title + '. ' + q.text); }
+    else if (speak) quest.pendingSay = true;
   }
   function qev(key) {
     if (!quest || QUEST[quest.i].k !== key) return;
@@ -2390,7 +2390,10 @@ export function startGame(E) {
   function guideFrame(dt) {
     // 큰 화면이 열려 있을 때는 그 화면을 따라 하면 되니까 안내 카드는 잠시 숨김
     const want = !!quest && !E.inMR() && !main.visible;
-    if (guideCard.visible !== want) { guideCard.show(want); if (want) placeGuide(true); }
+    if (guideCard.visible !== want) {
+      guideCard.show(want);
+      if (want) { placeGuide(true); if (quest.pendingSay) { quest.pendingSay = false; const q = QUEST[quest.i]; E.say(q.title + '. ' + q.text); } }
+    }
     if (!want) return;
     const h = guideTarget(_gt);
     _gp.copy(guideCard.mesh.position);
@@ -2403,9 +2406,53 @@ export function startGame(E) {
       if (guideCard.mesh.position.distanceTo(_gt) < 0.03) guideMove = false;
     }
   }
+
+  // 안내 중: 지금 화면에서 눌러야 할 버튼을 알려 주기
+  const PRESS = '여기를 누르세요';
+  function questHint() {
+    if (!quest || !main.visible || E.inMR()) return null;
+    const k = QUEST[quest.i].k, c = current;
+    const back = ['home', '“정원으로 돌아가기”를 누르세요. 그다음 아래 안내 카드를 보세요'];
+    const leave = (txt) => ['exit', txt + ' 다 둘러보면 왼쪽 위의 나가기 버튼을 누르세요'];
+    const M = {
+      flashResult: back, shopResult: back, teaEnd: back, mrDone: back,
+      flashStart: ['start', '“시작하기”를 누르세요'], flashInstr: ['ok', '설명을 읽고 “확인”을 누르세요'], flashRun: [null, '반짝인 꽃의 자리를 기억해서 눌러 주세요'],
+      shopStart: ['start', '“시작하기”를 누르세요'], shopInstr: ['ok', '설명을 읽고 “확인”을 누르세요'], shopList: ['done', '살 물건을 잘 기억한 다음 “다 기억했어요”를 누르세요'],
+      shopPick: ['pay', '기억한 물건을 모두 고른 다음 “계산하기”를 누르세요'], shopPay: ['pay', '동전을 올려 값을 맞춘 다음 “계산하기”를 누르세요'],
+      guide: ['walk', '“걸어서 가기”를 누르고 초록 빛기둥을 따라 걸어가세요'],
+      'garden-choose': [null, '심고 싶은 씨앗을 골라 주세요'], 'garden-confirm': ['yes', '“심기”를 누르세요'],
+      mr: ['go', '“MR 시작하기”를 누르세요'], mrNo: ['ok', '“확인”을 누르면 다음 안내로 넘어가요'],
+      teaEntry: leave('가족, 친구와 이야기하는 곳이에요. “참여하기”를 누르면 대화에 들어가요.'),
+      shopBuy: leave('물건을 골라 장바구니에 담고 계산할 수 있어요.'),
+      market: leave('키운 꽃을 팔아 꽃 코인을 받을 수 있어요.'),
+      mail: leave('가족이 보낸 꽃 소원을 보고 꽃을 선물할 수 있어요.')
+    };
+    if (c === 'menu') {
+      const t = { flash: 'train', shopT: 'train', plant: 'garden', tea: 'tea', market: 'market', mail: 'mail' }[k];
+      return t ? [t, '이 버튼을 누르세요'] : ['close', '메뉴를 닫고 아래 안내 카드를 보세요'];
+    }
+    if (c === 'training') {
+      if (k === 'flash') return ['flash', '“반짝 꽃 찾기”를 누르세요'];
+      if (k === 'shopT') return ['shop', '“기억 꽃집”을 누르세요'];
+      return ['exit', '나가기 버튼을 누르고 아래 안내 카드를 보세요'];
+    }
+    return M[c] || null;
+  }
+  let qhKey = '', qhT = 0;
+  function questHintFrame(now) {
+    const h = questHint();
+    const key = h ? current + '|' + h[0] + '|' + h[1] : '';
+    if (key !== qhKey) {
+      qhKey = key;
+      main.guideId = h ? h[0] : null; main.guideText = h && h[0] ? PRESS : '';
+      main.refresh();
+      if (h) { if (h[0]) E.toast(h[1], false, 5000); E.say(h[1]); }
+    }
+    if (main.guideId && now - qhT > 120) { qhT = now; main.refresh(); }
+  }
   const _tick = E.onTick;
   E.onTick = (dt, now) => {
-    followFrame(dt); tutFrame(); guideFrame(dt);
+    followFrame(dt); tutFrame(); guideFrame(dt); questHintFrame(now);
     if (now - (E._bonusT || 0) > 60000) { E._bonusT = now; if (loginBonus()) E.toast('출석 보상으로 꽃 코인 200개를 받았어요'); }
     // 눈앞에 큰 화면이 열려 있으면 정원 보관함 버튼은 잠시 숨김
     const gbOn = !E.inMR() && (!main.visible || activeZone === 'garden');
